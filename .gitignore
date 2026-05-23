@@ -1,0 +1,19 @@
+# Notebook checkpoints
+.ipynb_checkpoints/
+__pycache__/
+
+# Local environment / secrets
+.env
+
+# OS / editor junk
+.DS_Store
+*.bak
+*.tmp
+
+# Test / build artifacts
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Raw and cleaned CVRs are committed via Git LFS — see .gitattributes
