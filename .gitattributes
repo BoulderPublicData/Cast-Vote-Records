@@ -1,0 +1,9 @@
+# Cast Vote Record xlsx files are large; store via Git LFS.
+data/raw/*.xlsx filter=lfs diff=lfs merge=lfs -text
+
+# Cleaned wide CSVs can grow into the tens of MB. Track them in LFS too so
+# diffs do not bloat the repo history.
+data/clean/*.csv filter=lfs diff=lfs merge=lfs -text
+
+# Cluster small-multiples PNG produced by the analysis notebook.
+data/clean/*.png filter=lfs diff=lfs merge=lfs -text
