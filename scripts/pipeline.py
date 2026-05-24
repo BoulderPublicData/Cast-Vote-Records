@@ -1,150 +1,104 @@
-"""Command-line entrypoint: ``python -m cvr_pipeline build``.
+"""End-to-end driver. ``python -m scripts.pipeline`` runs the full chain;
+subcommands expose individual phases.
 
-Reads each CVR file from ``data/raw/`` listed in
-:data:`cvr_pipeline.sources.SOURCES`, runs the loader + cleaner, and writes a
-wide CSV per election to ``data/clean/<election_key>-city-of-boulder-wide.csv``.
-A summary CSV at ``data/clean/_summary.csv`` records what was produced.
+::
+
+    python -m scripts.pipeline                # fetch → clean → audit
+    python -m scripts.pipeline fetch          # download + manifest
+    python -m scripts.pipeline clean          # filter + tidy → CSV
+    python -m scripts.pipeline audit          # summary + variables report
+    python -m scripts.pipeline reconcile      # independent count check
+    python -m scripts.pipeline publish build  # build Datasette SQLite (opt-in)
+    python -m scripts.pipeline list           # list known elections
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
-from typing import Iterable
 
-import pandas as pd
-
-from .cleaner import clean_city_cvr
-from .loader import load_raw_cvr
-from .sources import SOURCES, CvrSource, get_source
+from .audit import write_audit
+from .clean import clean
+from .fetch import fetch
+from .reconcile import reconcile
+from .sources import SOURCES
 
 
-RAW_DIR = Path("data/raw")
-CLEAN_DIR = Path("data/clean")
-
-
-def _process(src: CvrSource, raw_dir: Path, clean_dir: Path, verbose: bool):
-    raw_path = raw_dir / src.filename
-    if not raw_path.exists():
-        print(f"  [skip] {src.election_key}: {raw_path} not found", flush=True)
-        return None
-
-    if verbose:
-        size_mb = raw_path.stat().st_size / 1e6
-        print(f"  loading {src.election_key} ({size_mb:.1f} MB)...", flush=True)
-
-    raw = load_raw_cvr(raw_path)
-    result = clean_city_cvr(raw, election_key=src.election_key)
-
-    if result.n_city_ballots == 0:
+def _list(_: argparse.Namespace) -> int:
+    for src in SOURCES:
+        posted = "public" if src.public_url else "CORA"
         print(
-            f"  [empty] {src.election_key}: 0 City of Boulder ballots "
-            f"(no City-of-Boulder contests on any ballot type — expected for "
-            f"partisan primaries)",
-            flush=True,
+            f"  {src.election_key:24s} {src.year} "
+            f"{src.election_type:12s} [{posted}] {src.filename}"
         )
-        return result
+    return 0
 
-    out_path = clean_dir / f"{src.election_key}-city-of-boulder-wide.csv"
-    result.cleaned.to_csv(out_path, index=False)
-    print(
-        f"  [ok]   {src.election_key}: {result.n_city_ballots:,} ballots × "
-        f"{result.n_choice_columns} choice cols → {out_path}",
-        flush=True,
+
+def _full_run(args: argparse.Namespace) -> int:
+    fetch(force=args.force, verbose=not args.quiet)
+    clean(elections=args.election, fail_on_empty=args.fail_on_empty,
+          verbose=not args.quiet)
+    write_audit(verbose=not args.quiet)
+    return 0
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="scripts.pipeline", description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    return result
+    p.set_defaults(func=_full_run)
+    p.add_argument("--force", action="store_true",
+                   help="re-download originals even when present")
+    p.add_argument("--fail-on-empty", action="store_true",
+                   help="exit non-zero if every output is empty")
+    p.add_argument("--election", "-e", action="append", default=[],
+                   help="process only this election_key (repeatable)")
+    p.add_argument("--quiet", "-q", action="store_true")
+
+    sub = p.add_subparsers(dest="cmd")
+
+    fetch_p = sub.add_parser("fetch", help="download originals + write manifest")
+    fetch_p.add_argument("--force", action="store_true")
+    fetch_p.add_argument("--quiet", "-q", action="store_true")
+    fetch_p.set_defaults(func=lambda a: (
+        fetch(force=a.force, verbose=not a.quiet), 0)[1])
+
+    clean_p = sub.add_parser("clean", help="filter + tidy → wide CSVs")
+    clean_p.add_argument("--election", "-e", action="append", default=[])
+    clean_p.add_argument("--fail-on-empty", action="store_true")
+    clean_p.add_argument("--quiet", "-q", action="store_true")
+    clean_p.set_defaults(func=lambda a: (clean(
+        elections=a.election, fail_on_empty=a.fail_on_empty, verbose=not a.quiet
+    ), 0)[1])
+
+    audit_p = sub.add_parser("audit", help="summary stats + variables report")
+    audit_p.add_argument("--quiet", "-q", action="store_true")
+    audit_p.set_defaults(func=lambda a: (
+        write_audit(verbose=not a.quiet), 0)[1])
+
+    reconcile_p = sub.add_parser("reconcile", help="independent count check")
+    reconcile_p.add_argument("--quiet", "-q", action="store_true")
+    reconcile_p.set_defaults(func=lambda a: (
+        reconcile(verbose=not a.quiet), 0)[1])
+
+    publish_p = sub.add_parser("publish", help="build / serve / deploy Datasette")
+    publish_p.add_argument("publish_cmd", choices=["build", "serve", "deploy"])
+    publish_p.set_defaults(func=lambda a: _delegate_publish(a))
+
+    sub.add_parser("list", help="list known elections").set_defaults(func=_list)
+
+    return p
 
 
-def build(
-    elections: Iterable[str] = (),
-    raw_dir: Path = RAW_DIR,
-    clean_dir: Path = CLEAN_DIR,
-    verbose: bool = True,
-) -> pd.DataFrame:
-    """Run the loader + cleaner for every election (or a filtered subset).
-
-    Parameters
-    ----------
-    elections
-        Iterable of ``election_key`` strings. Empty (default) means *all* in
-        :data:`cvr_pipeline.sources.SOURCES`.
-    raw_dir, clean_dir
-        Input and output directories.
-    verbose
-        Print per-election progress lines to stdout.
-
-    Returns
-    -------
-    pandas.DataFrame
-        One row per processed election with bookkeeping columns.
-    """
-    clean_dir.mkdir(parents=True, exist_ok=True)
-    targets = tuple(SOURCES) if not elections else tuple(get_source(k) for k in elections)
-
-    rows = []
-    for src in targets:
-        res = _process(src, raw_dir, clean_dir, verbose=verbose)
-        if res is None:
-            continue
-        rows.append({
-            "election_key": res.election_key,
-            "year": src.year,
-            "election_type": src.election_type,
-            "n_raw_rows": res.n_raw_rows,
-            "n_redacted_dropped": res.n_redacted_dropped,
-            "city_ballot_types": ",".join(res.city_ballot_types),
-            "n_city_ballots": res.n_city_ballots,
-            "n_choice_columns": res.n_choice_columns,
-            "public_url": src.public_url or "",
-        })
-
-    summary = pd.DataFrame(rows).set_index("election_key") if rows else pd.DataFrame()
-    if not summary.empty:
-        summary_path = clean_dir / "_summary.csv"
-        summary.to_csv(summary_path)
-        if verbose:
-            print(f"\nwrote {summary_path}", flush=True)
-    return summary
-
-
-def _parse_args(argv: list[str]) -> argparse.Namespace:
-    p = argparse.ArgumentParser(prog="cvr_pipeline", description=__doc__)
-    sub = p.add_subparsers(dest="cmd", required=True)
-
-    build_p = sub.add_parser("build", help="Clean every CVR in data/raw/")
-    build_p.add_argument(
-        "--election", "-e", action="append", default=[],
-        help="Process only this election_key (repeatable). Default: all.",
-    )
-    build_p.add_argument("--raw-dir", type=Path, default=RAW_DIR)
-    build_p.add_argument("--clean-dir", type=Path, default=CLEAN_DIR)
-    build_p.add_argument("--quiet", "-q", action="store_true")
-
-    sub.add_parser("list", help="List known elections from sources.py")
-
-    return p.parse_args(argv)
+def _delegate_publish(args: argparse.Namespace) -> int:
+    from .publish import _main as publish_main
+    return publish_main([args.publish_cmd])
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = _parse_args(sys.argv[1:] if argv is None else argv)
-    if args.cmd == "build":
-        summary = build(
-            elections=args.election,
-            raw_dir=args.raw_dir,
-            clean_dir=args.clean_dir,
-            verbose=not args.quiet,
-        )
-        if summary.empty:
-            print("no elections were processed", file=sys.stderr)
-            return 1
-        return 0
-    if args.cmd == "list":
-        for src in SOURCES:
-            posted = "public" if src.public_url else "CORA"
-            print(f"  {src.election_key:24s} {src.year} {src.election_type:12s} [{posted}] {src.filename}")
-        return 0
-    return 2
+    args = _build_parser().parse_args(argv)
+    return args.func(args)
 
 
 if __name__ == "__main__":
