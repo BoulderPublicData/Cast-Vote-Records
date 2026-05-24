@@ -34,10 +34,10 @@ The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clea
 | `scripts/config.py` | Path constants (`ORIGINAL_DIR`, `PROCESSED_DIR`, ...) |
 | `scripts/sources.py` | `CvrSource` dataclass + `SOURCES` manifest tuple |
 | `scripts/loader.py` | `load_raw_cvr()` — reconstructs the Dominion 4-row header into a MultiIndex DataFrame |
-| `scripts/cleaner.py` | `clean_city_cvr()` — auto-detects city ballot styles, drops the three flavours of privacy-aggregated rows, drops all-NaN contest cols, integrity-checks, flattens columns |
+| `scripts/cleaner.py` | `clean_countywide()` — drops privacy-aggregated rows (three conventions), calls `combine_multisheet` to merge consecutive ballot sheets into single per-voter rows, drops all-NaN contest cols, integrity-checks, flattens columns. `detect_city_ballot_types()` is kept as a downstream helper. |
 | `scripts/schema.py` | Pandera `ID_BLOCK_SCHEMA` + `validate_id_block` + `validate_contest_columns` |
 | `scripts/fetch.py` | Idempotent downloader; writes `data/original/manifest.json` with per-file SHA-256 |
-| `scripts/clean.py` | Orchestrator: walks each source, runs loader + cleaner, writes wide CSV + `provenance.csv` + `_summary.csv` |
+| `scripts/clean.py` | Orchestrator: walks each source, runs loader + cleaner, writes per-voter wide CSV + `provenance.csv` + `_summary.csv` (with sheet-count distribution and multi-sheet BallotTypes) |
 | `scripts/audit.py` | Summary stats per processed CSV → `data/audit/summary.md` + `docs/variables.{md,csv}` |
 | `scripts/reconcile.py` | Independent raw-row count check vs `_summary.csv`; non-zero exit on mismatch |
 | `scripts/publish.py` | Builds `data/processed/cast_vote_records.db` for Datasette + auto-generates `metadata.yaml` (opt-in) |
@@ -87,9 +87,11 @@ Boulder uses three conventions to aggregate ballots in small precincts:
 ## Design decisions
 
 * **`scripts/` package, single analysis notebook.** The data-liberation convention is `scripts/` (not `src/` or the project name). The pipeline is callable, testable, and CI-friendly; the analysis is one notebook a critic can read top-to-bottom.
+* **Per-voter primary output, not per-sheet.** Dominion CVRs export one row per ballot sheet ([NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103)). Multi-sheet ballots — the 2024 Boulder General used a two-sheet ballot for nearly every style — would over-count voters by their average sheet-count if kept per-sheet. The cleaner infers sheet identity per BallotType from contest-fill fingerprints, then walks `(Tab, Batch, RecordId)` order to merge each consecutive `(sheet K, sheet K+1)` pair into one voter. Bookkeeping columns `_ID/n_sheets` and `_ID/voter_id` carry the merge metadata.
+* **Countywide, not jurisdiction-filtered.** The pipeline emits every ballot in the county. Jurisdiction filtering (City of Boulder, Longmont, etc.) is done downstream in the analysis layer. `scripts.cleaner.detect_city_ballot_types` is kept available for the inverse operation (ballot-style → membership) and used in `clusters.ipynb`.
 * **Single loader, not vintage bands.** The Dominion XLSX format is structurally stable across 2019–2025. The only drift is the ID-column set (which `ID_LABELS` auto-detects) and the 2024 third-row party tags (which fall through the "not a known ID label" branch). One parser is defensible because the format actually didn't change.
 * **Wide as the primary storage shape.** Per the data-liberation convention's note on ballot-level data, wide-by-key is correct when the ballot is the observation. A tidy long-form derivative is shown in `docs/filter-pivot-recipes.md`.
-* **Auto-detect City of Boulder ballot styles.** The County's coding has drifted (`DS-NN` strings → zero-padded numeric strings); auto-detection by contest-content avoids per-year hardcoding.
+* **Empirical sheet-order wins over heuristics.** Within each BallotType, sheet 1 is whichever fingerprint appears first by RecordId in `(Tab, Batch)` groups (trusting the scanner). The contest-count heuristic (more non-null columns = sheet 1) is a sanity check; disagreement logs a warning rather than overriding.
 * **Per-extract provenance, not per-row.** `data/processed/provenance.csv` keyed on `election_key`.
 * **Immutable originals.** Files in `data/original/` are write-only from `scripts.fetch`. Re-running the cleaner does not touch them.
 * **Errors durable, not fatal.** The CLI's `--fail-on-empty` flag turns silent regressions loud.

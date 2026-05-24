@@ -24,7 +24,7 @@ from .schema import contest_columns, id_columns
 
 
 def _list_processed() -> list[Path]:
-    return sorted(PROCESSED_DIR.glob("*-city-of-boulder-wide.csv"))
+    return sorted(PROCESSED_DIR.glob("*-county-wide-by-voter.csv"))
 
 
 def _summarize_one(path: Path) -> dict:
@@ -50,6 +50,8 @@ def write_audit(verbose: bool = True) -> Path:
         )
 
     rows = [_summarize_one(p) for p in files]
+    for r in rows:
+        r["key"] = r["path"].name.removesuffix("-county-wide-by-voter.csv")
 
     ts = time.strftime("%Y%m%d-%H%M%S")
     out_path = AUDIT_DIR / f"summary-{ts}.md"
@@ -63,14 +65,13 @@ def write_audit(verbose: bool = True) -> Path:
         "documentation lives in `docs/data-dictionary.md`."
     )
     lines.append("")
-    lines.append("## Per-election shape")
+    lines.append("## Per-election shape (per-voter output)")
     lines.append("")
-    lines.append("| Election | n ballots | ID cols | contest cols | mem (MB) | null % |")
+    lines.append("| Election | n voters | ID cols | contest cols | mem (MB) | null % |")
     lines.append("| --- | ---: | ---: | ---: | ---: | ---: |")
     for r in rows:
-        key = r["path"].name.removesuffix("-city-of-boulder-wide.csv")
         lines.append(
-            f"| {key} | {r['n_ballots']:,} | {r['n_id_cols']} | "
+            f"| {r['key']} | {r['n_ballots']:,} | {r['n_id_cols']} | "
             f"{r['n_contest_cols']} | {r['memory_mb']:.1f} | "
             f"{r['null_pct']:.1f} |"
         )
@@ -119,12 +120,11 @@ def _write_variables_report(rows: list[dict], verbose: bool) -> None:
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
     records: list[dict] = []
     for r in rows:
-        key = r["path"].name.removesuffix("-city-of-boulder-wide.csv")
         df = pd.read_csv(r["path"], low_memory=False, nrows=5000)
         for col in df.columns:
             kind = "id" if col.startswith("_ID/") else "contest"
             records.append({
-                "election_key": key,
+                "election_key": r["key"],
                 "column":       col,
                 "kind":         kind,
                 "dtype":        str(df[col].dtype),

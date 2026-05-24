@@ -35,6 +35,14 @@ OPTIONAL_ID_COLUMNS: tuple[str, ...] = (
 )
 """ID columns that appear in some Boulder vintages and not others."""
 
+BOOKKEEPING_ID_COLUMNS: tuple[str, ...] = (
+    "_ID/n_sheets",
+    "_ID/voter_id",
+)
+"""ID columns the cleaner adds for each voter row: ``n_sheets`` is the number
+of ballot sheets merged into this voter; ``voter_id`` is the ImprintedId of
+the lowest-RecordId sheet."""
+
 
 ID_BLOCK_SCHEMA: pa.DataFrameSchema = pa.DataFrameSchema(
     columns={

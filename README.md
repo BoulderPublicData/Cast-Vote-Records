@@ -6,22 +6,22 @@ The project follows the [data-liberation](https://github.com/brianckeegan/data-l
 
 ## What's in here
 
-Nine original CVR files (seven elections plus a CORA-disclosed 2023 alongside the public version, and the empty-but-archived 2024 Primary) and seven processed wide-format CSVs of City-of-Boulder ballots:
+Nine original CVR files (seven elections plus a CORA-disclosed 2023 alongside the public version, and the empty-but-archived 2024 Primary) and seven processed countywide per-voter wide-format CSVs. **Each row is one voter** (multi-sheet ballots merged); the previous per-ballot-sheet outputs over-counted voters by the average sheet count (≈ 2× for 2024G).
 
-| Election | Provenance | City of Boulder ballots | Contest columns |
-| --- | --- | ---: | ---: |
-| [2019 Coordinated](data/processed/2019-Coordinated-city-of-boulder-wide.csv) | CORA | ~35,000 | 33 |
-| [2020 General](data/processed/2020-General-city-of-boulder-wide.csv) | CORA | ~63,000 | ~105 |
-| [2021 Coordinated](data/processed/2021-Coordinated-city-of-boulder-wide.csv) | CORA | ~34,000 | ~99 |
-| [2022 General](data/processed/2022-General-city-of-boulder-wide.csv) | CORA | ~94,000 | ~128 |
-| [2023 Coordinated](data/processed/2023-Coordinated-city-of-boulder-wide.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx) | ~34,000 | 50 |
-| 2024 Primary | [public](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx) | 0 (partisan primary, no city contests) | — |
-| [2024 General](data/processed/2024-General-city-of-boulder-wide.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx) | ~114,000 | ~106 |
-| [2025 Coordinated](data/processed/2025-Coordinated-city-of-boulder-wide.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx) | ~34,000 | 35 |
+| Election | Provenance | Raw sheets | Voters (post-merge) | Sheets-per-voter |
+| --- | --- | ---: | ---: | --- |
+| [2019 Coordinated](data/processed/2019-Coordinated-county-wide-by-voter.csv) | CORA | 115,056 | 115,056 | single-sheet |
+| [2020 General](data/processed/2020-General-county-wide-by-voter.csv) | CORA | 205,796 | 205,796 | single-sheet |
+| [2021 Coordinated](data/processed/2021-Coordinated-county-wide-by-voter.csv) | CORA | 108,363 | 108,363 | single-sheet |
+| [2022 General](data/processed/2022-General-county-wide-by-voter.csv) | CORA | 320,542 | **163,043** | **two-sheet** for nearly every BallotType |
+| [2023 Coordinated](data/processed/2023-Coordinated-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx) | 118,669 | 118,669 | single-sheet |
+| [2024 Primary](data/processed/2024-Primary-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx) | 64,775 | 64,775 | single-sheet; no City of Boulder municipal contests |
+| [2024 General](data/processed/2024-General-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx) | 384,384 | **193,238** | **two-sheet** for every BallotType |
+| [2025 Coordinated](data/processed/2025-Coordinated-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx) | 120,529 | 120,529 | single-sheet |
 
-Headline exact numbers are pinned in [`data/processed/_summary.csv`](data/processed/_summary.csv) and the latest [`data/audit/summary.md`](data/audit/summary.md).
+Exact per-voter counts (including the sheet-count distribution per election) are pinned in [`data/processed/_summary.csv`](data/processed/_summary.csv) and the latest [`data/audit/summary.md`](data/audit/summary.md).
 
-Each row in a processed CSV is one **ballot sheet** (per [NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103)). A sample of the 2023 Coordinated:
+Each row in a processed CSV is one **voter** — the merger of every ballot sheet they returned (per [NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103) and the merge rules in [`docs/methodology.md`](docs/methodology.md)). A sample of the 2023 Coordinated:
 
 | `_ID/CvrNumber` | `_ID/TabulatorNum` | `_ID/BallotType` | `City of Boulder Mayoral Candidates …::Aaron Brockett(1)` | `City of Boulder Ballot Issue 2A …::Yes` |
 | --- | --- | --- | ---: | ---: |
@@ -43,22 +43,27 @@ Boulder County publishes its CVRs because Colorado statute requires risk-limitin
 
 ```python
 import pandas as pd
-df = pd.read_csv("data/processed/2023-Coordinated-city-of-boulder-wide.csv",
+df = pd.read_csv("data/processed/2023-Coordinated-county-wide-by-voter.csv",
                  low_memory=False)
+# Filter to City of Boulder voters: any contest column that names the city is non-null
+city_cols = [c for c in df.columns if "City of Boulder" in c]
+city = df[df[city_cols].notna().any(axis=1)]
 ```
 
 ### R / tidyverse
 
 ```r
-library(readr)
-df <- read_csv("data/processed/2023-Coordinated-city-of-boulder-wide.csv",
+library(readr); library(dplyr)
+df <- read_csv("data/processed/2023-Coordinated-county-wide-by-voter.csv",
                show_col_types = FALSE)
+city_cols <- grep("City of Boulder", names(df), value = TRUE)
+city <- df |> filter(if_any(all_of(city_cols), \(x) !is.na(x)))
 ```
 
 ### DuckDB
 
 ```sql
-SELECT * FROM read_csv_auto('data/processed/2023-Coordinated-city-of-boulder-wide.csv') LIMIT 5;
+SELECT * FROM read_csv_auto('data/processed/2023-Coordinated-county-wide-by-voter.csv') LIMIT 5;
 ```
 
 More recipes — wide→long pivots, cross-election pools, undervote-vs-ineligible — in [`docs/filter-pivot-recipes.md`](docs/filter-pivot-recipes.md).

@@ -47,14 +47,14 @@ def build(verbose: bool = True):
         DB_PATH.unlink()
     db = sqlite_utils.Database(DB_PATH)
 
-    wide_csvs = sorted(PROCESSED_DIR.glob("*-city-of-boulder-wide.csv"))
+    wide_csvs = sorted(PROCESSED_DIR.glob("*-county-wide-by-voter.csv"))
     if not wide_csvs:
         raise SystemExit(
             "no wide CSVs in data/processed/; run `python -m scripts.clean` first"
         )
 
     for csv in wide_csvs:
-        election_key = csv.name.removesuffix("-city-of-boulder-wide.csv")
+        election_key = csv.name.removesuffix("-county-wide-by-voter.csv")
         table_name = election_key.replace("-", "_").lower()
         df = pd.read_csv(csv, low_memory=False)
         db[table_name].insert_all(df.to_dict(orient="records"))  # type: ignore[union-attr]
@@ -94,8 +94,8 @@ def _write_metadata(verbose: bool) -> None:
         table_name = src.election_key.replace("-", "_").lower()
         lines.append(f"      {table_name}:")
         lines.append(
-            f"        description: 'City of Boulder ballots from the "
-            f"{src.year} {src.election_type} election.'"
+            f"        description: 'Per-voter ballots from the "
+            f"{src.year} {src.election_type} election (countywide).'"
         )
     lines.append("      provenance:")
     lines.append("        description: 'Source URL, SHA-256 and retrieval time per file.'")

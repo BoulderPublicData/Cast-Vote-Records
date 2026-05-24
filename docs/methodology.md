@@ -16,26 +16,41 @@ data/original/*.xlsx
         ├── reconstruct the 4-row Dominion header into a MultiIndex DataFrame
         ├── ID columns → ("_ID", label)
         └── contest columns → (contest, candidate)
-    └── scripts.cleaner.clean_city_cvr
+    └── scripts.cleaner.clean_countywide
         ├── drop privacy-aggregated rows
         │   ├── sentinel-string CvrNumber (2023+)
         │   ├── NaN CvrNumber (2019–2022)
         │   └── NaN TabulatorNum (2021 per-style summary rows)
-        ├── auto-detect city ballot styles (min_ballots=5 threshold)
-        ├── filter to those ballot styles
+        ├── combine_multisheet: merge consecutive ballot sheets into voters
+        │   ├── per BallotType, identify distinct contest-fill fingerprints
+        │   ├── assign sheet order empirically (which fingerprint appears
+        │   │   at lowest RecordId in each (Tab, Batch) group)
+        │   ├── walk (Tab, Batch, RecordId), merge each (sheet K, sheet K+1)
+        │   │   pair within the same BallotType + CountingGroup
+        │   └── add _ID/n_sheets + _ID/voter_id bookkeeping
         ├── drop all-NaN contest columns
         ├── integrity checks
         └── flatten columns to "_ID/<label>" + "<contest>::<choice>"
-    └── data/processed/<election>-city-of-boulder-wide.csv
+    └── data/processed/<election>-county-wide-by-voter.csv
 ```
 
-The orchestrator is `scripts.clean.clean`. The CLI driver is `python -m scripts.pipeline`.
+The orchestrator is `scripts.clean.clean`. The CLI driver is `python -m scripts.pipeline`. Jurisdiction filtering (City of Boulder, Longmont, etc.) is done downstream in the analysis layer — see `scripts.cleaner.detect_city_ballot_types` for the helper.
 
-## City of Boulder detection
+## Multi-sheet merge
 
-A ballot style is "City of Boulder" if more than 5 ballots of that style have a non-null value in any contest column whose name contains the substring "City of Boulder". The threshold defends against privacy-aggregated rows that survive the redaction filter.
+Dominion CVRs export one row per ballot **sheet**, not per voter. Boulder's 2024 General, for example, was a two-sheet ballot — every City of Boulder voter contributed two rows to the raw CVR (sheet 1 with the federal/state/judicial contests; sheet 2 with the city ballot questions and state propositions). Treating each row as one voter therefore over-counts voters by the average sheet-count, roughly 2× for 2024G.
 
-Why auto-detect rather than hardcode? Because the County's ballot-style coding has drifted over time. In 2023, City of Boulder ballots use the code `DS-01`. In 2024 the coding switched to zero-padded numeric strings (`01`, `06`, `27`). The set of "city" ballot styles also changes by year (one or two in 2019–2021; three in the 2022 midterm). The auto-detector handles every observed pattern without per-year hardcoding.
+The cleaner identifies multi-sheet ballots by looking at which contest columns are non-null on each row. For each `BallotType`, sheet 1 always has the same set of contests filled and sheet 2 has a different (disjoint) set — so two distinct contest-fill fingerprints per BallotType signals a 2-sheet ballot. The sheet order is determined empirically: for each `(Tab, Batch)` group, the fingerprint that appears first by RecordId is "sheet 1." A sanity check warns when the empirical order disagrees with the heuristic that sheet 1 usually has more non-null contests.
+
+The merger then walks rows in scanner order (`Tab, Batch, RecordId`) and merges each consecutive `(sheet K, sheet K+1)` pair within the same `BallotType` + `CountingGroup` into one voter. Single-sheet voters (where only one of the two sheets was returned, or the ballot style is genuinely single-sheet) remain standalone. Edge cases the merger correctly handles: two adjacent sheet-1 rows from different single-sheet voters; a voter's sheet 2 followed by a different voter's sheet 1; BallotType or batch boundary breaks; ballot styles where 3+ fingerprints are detected (warn and treat each as a single-sheet voter).
+
+The bookkeeping columns `_ID/n_sheets` and `_ID/voter_id` carry the merge metadata.
+
+## City of Boulder filtering (downstream)
+
+The pipeline no longer filters by jurisdiction — every ballot in the county is processed. To restrict to City of Boulder voters in the analysis layer, the notebook `clusters.ipynb` filters by checking whether any contest column whose name contains `"City of Boulder"` is non-null for that voter. The helper `scripts.cleaner.detect_city_ballot_types` is still available for the inverse operation (ballot-style → membership) if needed.
+
+The County's ballot-style coding has drifted over time. In 2023, City of Boulder ballots use the code `DS-01`. In 2024 the coding switched to zero-padded numeric strings (`01`, `06`, `27`). The set of "city" ballot styles also changes by year. Filtering by contest content (rather than by ballot-style code) sidesteps the drift.
 
 ## Privacy aggregation
 

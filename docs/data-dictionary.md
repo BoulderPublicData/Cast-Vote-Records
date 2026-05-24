@@ -1,6 +1,8 @@
-# Data dictionary — City of Boulder wide CVRs
+# Data dictionary — countywide per-voter CVRs
 
-Per-column reference for ``data/processed/<election>-city-of-boulder-wide.csv``. Each row is one **ballot sheet** as defined by [NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103); each column is either an identifier (prefix ``_ID/``) or a ballot-choice column (``<contest>::<candidate>``).
+Per-column reference for ``data/processed/<election>-county-wide-by-voter.csv``. Each row is one **voter** — i.e. the merger of all ballot **sheets** that voter returned (one or more). A Dominion CVR exports one row per ballot sheet (per [NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103)); Boulder's 2024 General used a two-sheet ballot for nearly every style, so the per-sheet row count is roughly 2× the per-voter row count. The cleaner combines consecutive sheets from the same voter back into a single voter row; see [`methodology.md`](methodology.md) for the merge rules.
+
+Each column is either an identifier (prefix ``_ID/``) or a ballot-choice column (``<contest>::<candidate>``).
 
 The auto-generated mechanical complement to this file is [`variables.md`](variables.md), regenerated on every `python -m scripts.audit` run.
 
@@ -16,6 +18,8 @@ The auto-generated mechanical complement to this file is [`variables.md`](variab
 | `_ID/CountingGroup` | Dominion-specific | string | `Regular` / `Mail` / `Provisional`. Present in 2019, 2020, 2022, 2024+; absent in 2021, 2023. |
 | `_ID/PrecinctPortion` | (cf. NIST `BallotStyleUnit` §3.5.6) | string | Political-geography portion of the precinct served by this ballot style. Present in 2019 and 2021. |
 | `_ID/BallotType` | `CVR::BallotStyleId` (NIST §3.5.4.1) | string | **The ballot *style* — which contests the voter was eligible to vote on.** Coding switched from `DS-NN` (2019–2023) to zero-padded numeric strings like `01`, `06`, `27` (2024+). |
+| `_ID/n_sheets` | (cleaner-added) | int | Number of ballot sheets merged into this voter's row. 1 for single-sheet ballots; 2 for most 2024 General voters; ≥2 if Boulder ever uses 3+ sheet ballots. |
+| `_ID/voter_id` | (cleaner-added) | string | The ``ImprintedId`` of the lowest-RecordId sheet in this voter's merge group. Stable identifier for joining cluster labels or other per-voter analyses back to the wide CSV. |
 
 ## Ballot-choice columns
 

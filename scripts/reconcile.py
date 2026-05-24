@@ -59,7 +59,8 @@ def reconcile(verbose: bool = True) -> dict:
                 "raw_row_count": None,
                 "pipeline_n_raw_rows": None,
                 "delta_raw": None,
-                "n_city_ballots": None,
+                "n_sheets": None,
+                "n_voters": None,
             })
             continue
         if verbose:
@@ -67,25 +68,30 @@ def reconcile(verbose: bool = True) -> dict:
         raw_count = _independent_raw_row_count(orig)
         pipeline_n_raw = int(summary.loc[src.election_key, "n_raw_rows"])
         delta = raw_count - pipeline_n_raw
-        n_city = int(summary.loc[src.election_key, "n_city_ballots"])
+        n_sheets = int(summary.loc[src.election_key, "n_sheets_after_redaction"])
+        n_voters = int(summary.loc[src.election_key, "n_voters"])
         n_redacted = int(summary.loc[src.election_key, "n_redacted_dropped"])
 
         status = "ok"
         if delta != 0:
             status = "MISMATCH-raw-row-count"
             has_regression = True
-        if n_city + n_redacted > raw_count:
-            status = "MISMATCH-city-plus-redacted-exceeds-raw"
+        if n_sheets + n_redacted > raw_count:
+            status = "MISMATCH-sheets-plus-redacted-exceeds-raw"
+            has_regression = True
+        if n_voters > n_sheets:
+            status = "MISMATCH-voters-exceeds-sheets"
             has_regression = True
 
         rows.append({
-            "election_key":         src.election_key,
-            "status":               status,
-            "raw_row_count":        raw_count,
-            "pipeline_n_raw_rows":  pipeline_n_raw,
-            "delta_raw":            delta,
-            "n_city_ballots":       n_city,
-            "n_redacted_dropped":   n_redacted,
+            "election_key":        src.election_key,
+            "status":              status,
+            "raw_row_count":       raw_count,
+            "pipeline_n_raw_rows": pipeline_n_raw,
+            "delta_raw":           delta,
+            "n_sheets":            n_sheets,
+            "n_voters":            n_voters,
+            "n_redacted_dropped":  n_redacted,
         })
 
     report = {"rows": rows, "has_regression": has_regression}
@@ -96,14 +102,14 @@ def reconcile(verbose: bool = True) -> dict:
         "Cross-check of per-election raw row counts between the pipeline "
         "output (`data/processed/_summary.csv`) and an independent row count "
         "of the originals.\n",
-        "| Election | status | raw rows | pipeline n_raw | Δ | city ballots | redacted |",
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
+        "| Election | status | raw rows | pipeline n_raw | Δ | sheets | voters | redacted |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for r in rows:
         md_lines.append(
             f"| {r['election_key']} | {r['status']} | "
             f"{r['raw_row_count']} | {r['pipeline_n_raw_rows']} | "
-            f"{r['delta_raw']} | {r['n_city_ballots']} | "
+            f"{r['delta_raw']} | {r['n_sheets']} | {r['n_voters']} | "
             f"{r['n_redacted_dropped']} |"
         )
     md_lines.append("")
