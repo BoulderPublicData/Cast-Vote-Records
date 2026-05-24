@@ -1,8 +1,9 @@
 """Manifest of every CVR processed by the pipeline.
 
-Each :class:`CvrSource` names one election's CVR file in ``data/raw/`` and
-records its provenance (CORA disclosure or public URL). When a new election
-becomes available, append a new entry; the CLI picks it up automatically.
+Each :class:`CvrSource` names one election's CVR file in ``data/original/``
+and records its provenance (CORA disclosure or public URL). When a new
+election becomes available, append a new entry; the CLI picks it up
+automatically.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ class CvrSource:
     """``'Coordinated'`` (odd-year, municipal) or ``'General'`` / ``'Primary'``."""
 
     filename: str
-    """Filename inside ``data/raw/`` (not a path)."""
+    """Filename inside ``data/original/`` (not a path)."""
 
     public_url: Optional[str]
     """Direct download URL on ``assets.bouldercounty.gov`` if the County has

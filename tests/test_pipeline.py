@@ -1,4 +1,4 @@
-"""Integration test for the pipeline CLI on a tmp fixture."""
+"""Integration test for the orchestrator on a tmp fixture."""
 
 from __future__ import annotations
 
@@ -9,18 +9,18 @@ from scripts import clean as clean_mod
 from scripts import config as config_mod
 
 
-def test_clean_emits_wide_csv_for_synthetic_fixture(
-    tmp_path: Path, minimal_cvr_path: Path, monkeypatch,
+def test_clean_emits_per_voter_csv_for_multisheet_fixture(
+    tmp_path: Path, multisheet_cvr_path: Path, monkeypatch,
 ):
-    """End-to-end: stage one fixture as 2023-Coordinated, point the pipeline at
-    tmp dirs, run clean, confirm the wide CSV exists with the right shape.
-    """
+    """End-to-end: stage one multi-sheet fixture as 2023-Coordinated,
+    point the pipeline at tmp dirs, run clean, confirm the wide CSV
+    exists with merged voter rows."""
     orig_dir = tmp_path / "original"
     proc_dir = tmp_path / "processed"
     audit_dir = tmp_path / "audit"
     lookups_dir = tmp_path / "lookups"
     orig_dir.mkdir()
-    shutil.copy(minimal_cvr_path, orig_dir / "2023-Coordinated-CVR.xlsx")
+    shutil.copy(multisheet_cvr_path, orig_dir / "2023-Coordinated-CVR.xlsx")
 
     monkeypatch.setattr(config_mod, "ORIGINAL_DIR", orig_dir)
     monkeypatch.setattr(config_mod, "PROCESSED_DIR", proc_dir)
@@ -37,10 +37,12 @@ def test_clean_emits_wide_csv_for_synthetic_fixture(
     summary = clean_mod.clean(elections=["2023-Coordinated"], verbose=False)
 
     assert not summary.empty
-    out = proc_dir / "2023-Coordinated-city-of-boulder-wide.csv"
+    out = proc_dir / "2023-Coordinated-county-wide-by-voter.csv"
     assert out.exists()
-    assert int(summary.loc["2023-Coordinated", "n_city_ballots"]) == 12
-    assert summary.loc["2023-Coordinated", "city_ballot_types"] == "DS-01"
+    row = summary.loc["2023-Coordinated"]
+    assert int(row["n_voters"]) == 9
+    assert int(row["n_sheets_after_redaction"]) == 13
+    assert row["multi_sheet_ballot_types"] == "DS-01"
 
     assert (proc_dir / "provenance.csv").exists()
     assert (proc_dir / "_summary.csv").exists()

@@ -1,28 +1,30 @@
 """Orchestrator: runs each :class:`scripts.sources.CvrSource` through the
-loader + cleaner, validates against :mod:`scripts.schema`, and writes
-per-election wide CSVs plus a project-wide provenance sidecar to
-``data/processed/``.
+loader + cleaner (drop redacted, combine multi-sheet ballots into per-voter
+rows), validates against :mod:`scripts.schema`, and writes per-election wide
+CSVs plus a project-wide provenance sidecar to ``data/processed/``.
 
 Outputs:
 
-* ``data/processed/<election_key>-city-of-boulder-wide.csv`` — one per
-  election with non-zero City of Boulder ballots.
+* ``data/processed/<election_key>-county-wide-by-voter.csv`` — one per
+  election, one row per **voter** (multi-sheet ballots merged), all ballots
+  in the county (no jurisdiction filter).
 * ``data/processed/provenance.csv`` — one row per processed artifact with
   source URL, retrieved-at time, SHA-256, output path, row counts.
-* ``data/processed/_summary.csv`` — bookkeeping (n raw, n redacted, n city
-  ballots, n contests).
+* ``data/processed/_summary.csv`` — bookkeeping (n raw, n redacted,
+  n sheets, n voters, multi-sheet ballot types, sheet-count distribution).
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from typing import Iterable
 
 import pandas as pd
 
-from .cleaner import clean_city_cvr
+from .cleaner import clean_countywide
 from .config import (
     ORIGINAL_DIR,
     PROCESSED_DIR,
@@ -37,7 +39,7 @@ from .sources import SOURCES, get_source
 
 
 def _wide_csv_path(election_key: str):
-    return PROCESSED_DIR / f"{election_key}-city-of-boulder-wide.csv"
+    return PROCESSED_DIR / f"{election_key}-county-wide-by-voter.csv"
 
 
 def clean(
@@ -55,8 +57,7 @@ def clean(
         in :data:`scripts.sources.SOURCES`.
     fail_on_empty
         If ``True``, raise ``SystemExit(1)`` when the whole pipeline produces
-        zero city-ballot rows across every output. Catches silent regressions
-        from upstream layout changes.
+        zero voter rows across every output.
 
     Returns
     -------
@@ -72,7 +73,8 @@ def clean(
 
     summary_rows: list[dict] = []
     provenance_rows: list[dict] = []
-    n_total_city = 0
+    n_total_voters = 0
+    all_warnings: list[str] = []
 
     for src in targets:
         raw_path = ORIGINAL_DIR / src.filename
@@ -86,38 +88,52 @@ def clean(
             print(f"  loading {src.election_key} ({size_mb:.1f} MB)...", flush=True)
 
         raw = load_raw_cvr(raw_path)
-        res = clean_city_cvr(raw, election_key=src.election_key)
+        res = clean_countywide(raw, election_key=src.election_key)
         out_path = _wide_csv_path(src.election_key)
 
-        if res.n_city_ballots == 0:
+        if res.n_voters == 0:
             if verbose:
                 print(
-                    f"  [empty] {src.election_key}: 0 City of Boulder ballots "
-                    f"(no City-of-Boulder contests on any ballot style)",
+                    f"  [empty] {src.election_key}: 0 voters after dropping "
+                    f"redacted rows",
                     flush=True,
                 )
         else:
             validate_id_block(res.cleaned)
             res.cleaned.to_csv(out_path, index=False)
-            n_total_city += res.n_city_ballots
+            n_total_voters += res.n_voters
             if verbose:
+                dist = ", ".join(f"{k}-sheet:{v:,}" for k, v
+                                 in sorted(res.sheet_count_distribution.items()))
                 print(
-                    f"  [ok]   {src.election_key}: {res.n_city_ballots:,} ballots "
-                    f"× {res.n_choice_columns} choice cols → {out_path.name}",
+                    f"  [ok]   {src.election_key}: "
+                    f"{res.n_sheets_after_redaction:,} sheets → "
+                    f"{res.n_voters:,} voters × "
+                    f"{res.n_choice_columns} choice cols  "
+                    f"({dist}) → {out_path.name}",
                     flush=True,
                 )
 
+        for w in res.warnings:
+            all_warnings.append(f"[{src.election_key}] {w}")
+
         manifest_entry = manifest.get(src.filename, {})
         summary_rows.append({
-            "election_key":        res.election_key,
-            "year":                src.year,
-            "election_type":       src.election_type,
-            "n_raw_rows":          res.n_raw_rows,
-            "n_redacted_dropped":  res.n_redacted_dropped,
-            "city_ballot_types":   ",".join(res.city_ballot_types),
-            "n_city_ballots":      res.n_city_ballots,
-            "n_choice_columns":    res.n_choice_columns,
-            "public_url":          src.public_url or "",
+            "election_key":            res.election_key,
+            "year":                    src.year,
+            "election_type":           src.election_type,
+            "n_raw_rows":              res.n_raw_rows,
+            "n_redacted_dropped":      res.n_redacted_dropped,
+            "n_sheets_after_redaction": res.n_sheets_after_redaction,
+            "n_voters":                res.n_voters,
+            "n_choice_columns":        res.n_choice_columns,
+            "multi_sheet_ballot_types": ",".join(res.multi_sheet_ballot_types),
+            "sheet_count_distribution": json.dumps(
+                {str(k): v for k, v in
+                 sorted(res.sheet_count_distribution.items())}
+            ),
+            "n_warnings":              len(res.warnings),
+            "public_url":              src.public_url or "",
         })
         provenance_rows.append({
             "election_key":        res.election_key,
@@ -128,7 +144,7 @@ def clean(
             "retrieved_at":        manifest_entry.get("mtime_iso", ""),
             "processed_path":      (
                 str(out_path.relative_to(PROCESSED_DIR.parent.parent))
-                if res.n_city_ballots else ""
+                if res.n_voters else ""
             ),
             "extracted_at":        time.strftime(
                 "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
@@ -149,10 +165,13 @@ def clean(
 
     if verbose and not summary.empty:
         print(f"\nwrote {SUMMARY_CSV.name} + {PROVENANCE_CSV.name}")
+        if all_warnings:
+            print(f"\n{len(all_warnings)} cleaner warning(s):")
+            for w in all_warnings:
+                print(f"  - {w}")
 
-    if fail_on_empty and n_total_city == 0:
-        print("FAIL: pipeline produced zero City of Boulder ballots",
-              file=sys.stderr)
+    if fail_on_empty and n_total_voters == 0:
+        print("FAIL: pipeline produced zero voter rows", file=sys.stderr)
         raise SystemExit(1)
     return summary
 
