@@ -26,7 +26,12 @@ exports:
   ``BatchId``, ``RecordId``) and aggregated vote values across many contests.
   These rows must be detected by the missing ID rather than by a string match.
 
-:func:`clean_city_cvr` drops both kinds. The auto-detection threshold
+* **2021 specifically** also has per-ballot-style summary rows where
+  ``TabulatorNum`` is ``NaN`` and the ballot-style code (``"DS-01"`` etc.)
+  is stuffed into ``CvrNumber``. A real ballot always has a ``TabulatorNum``
+  (the scanner that captured it), so the absence is diagnostic.
+
+:func:`clean_city_cvr` drops all three. The auto-detection threshold
 ``min_ballots`` in :func:`detect_city_ballot_types` is a defensive backstop
 in case a single aggregate row slips through and flips a non-city ballot
 style into the "city" set.
@@ -144,17 +149,34 @@ def clean_city_cvr(
     """
     n_raw = len(raw_df)
 
-    # 1. Drop privacy-aggregated rows. The County uses two conventions:
-    #    - sentinel strings in CvrNumber ("RCV Redacted & Randomly Sorted",
-    #      "Redacted & Aggregated") in 2023+
-    #    - NaN in CvrNumber for older aggregate rows (one per BallotType in 2022)
+    # 1. Drop privacy-aggregated rows. Boulder County uses three conventions
+    #    that collectively differ from a real ballot in one observable way:
+    #    a real ballot has BOTH an integer CvrNumber AND an integer
+    #    TabulatorNum. The three aggregation conventions each fail at least
+    #    one of those two checks:
+    #      (a) 2023+ — CvrNumber is a sentinel string like
+    #          "RCV Redacted & Randomly Sorted" or "Redacted & Aggregated"
+    #          (non-numeric).
+    #      (b) 2019–2022 — CvrNumber is NaN (one aggregate row per
+    #          BallotType).
+    #      (c) 2021 — TabulatorNum is NaN and CvrNumber holds the ballot-
+    #          style code ("DS-01" — also non-numeric).
+    #
+    #    pd.to_numeric(..., errors='coerce').isna() catches all three. It is
+    #    robust to the pandas 2.x → 3.x change in how NaN is represented in
+    #    object/string columns (where bare `.isna()` on an object series may
+    #    behave inconsistently across pandas versions).
     cvr_col = ("_ID", "CvrNumber")
+    tab_col = ("_ID", "TabulatorNum")
     cvr_vals = raw_df[cvr_col]
     if isinstance(cvr_vals, pd.DataFrame):
         cvr_vals = cvr_vals.iloc[:, 0]
-    sentinel_mask = cvr_vals.astype(str).isin(REDACTED_VALUES)
-    nan_mask = cvr_vals.isna()
-    redacted_mask = sentinel_mask | nan_mask
+    tab_vals = raw_df[tab_col]
+    if isinstance(tab_vals, pd.DataFrame):
+        tab_vals = tab_vals.iloc[:, 0]
+    missing_cvr_mask = pd.to_numeric(cvr_vals, errors="coerce").isna()
+    missing_tab_mask = pd.to_numeric(tab_vals, errors="coerce").isna()
+    redacted_mask = missing_cvr_mask | missing_tab_mask
     df = raw_df[~redacted_mask].copy()
     n_redacted = int(redacted_mask.sum())
 
