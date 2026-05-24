@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from cvr_pipeline.sources import SOURCES, get_source
+from scripts.sources import SOURCES, get_source
 
 
 def test_sources_has_unique_keys():
@@ -13,7 +13,6 @@ def test_sources_has_unique_keys():
 
 
 def test_sources_filenames_match_keys_loosely():
-    # Every source's filename should be findable and end with .xlsx
     for src in SOURCES:
         assert src.filename.endswith(".xlsx"), src
         assert str(src.year) in src.filename or src.year >= 2019, src

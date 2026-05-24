@@ -4,6 +4,7 @@ __pycache__/
 
 # Local environment / secrets
 .env
+.requests-cache.sqlite
 
 # OS / editor junk
 .DS_Store
@@ -12,8 +13,20 @@ __pycache__/
 
 # Test / build artifacts
 .pytest_cache/
+.ruff_cache/
 *.egg-info/
 build/
 dist/
+
+# Auto-generated docs (regenerate via `python -m scripts.audit`)
+docs/variables.md
+docs/variables.csv
+
+# Per-run audit reports — keep `summary.md` and `reconcile.md` as the stable
+# latest snapshots; ignore timestamped per-run copies.
+data/audit/summary-*.md
+data/audit/discovery-*.txt
+data/audit/extraction_errors.json
+data/audit/reconcile.json
 
 # Raw and cleaned CVRs are committed via Git LFS — see .gitattributes

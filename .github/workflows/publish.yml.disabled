@@ -1,0 +1,47 @@
+# Build the Datasette SQLite + deploy to Vercel on push to main that
+# touches data/processed/**. Disabled by default; rename to `publish.yml`
+# and add VERCEL_TOKEN repo secret to enable.
+
+name: publish-datasette
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/processed/**"
+      - "scripts/publish.py"
+      - "docs/data-dictionary.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[publish]"
+
+      - name: Build SQLite
+        run: python -m scripts.publish build
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          datasette publish vercel \
+            data/processed/cast_vote_records.db \
+            -m data/processed/metadata.yaml \
+            --project cast-vote-records \
+            --token "$VERCEL_TOKEN"
