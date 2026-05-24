@@ -1,0 +1,37 @@
+# Render the docs/ Quarto site to GitHub Pages on push to main.
+# Disabled by default. Before enabling:
+#   1. add `_quarto.yml` at the repo root
+#   2. run `quarto publish gh-pages` once locally to create the branch
+#   3. rename this file to `gh-pages.yml`
+
+name: render-docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "_quarto.yml"
+      - "data/processed/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false   # Pages cannot serve LFS
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render and publish
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          target: gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

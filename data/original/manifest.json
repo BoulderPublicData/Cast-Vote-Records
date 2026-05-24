@@ -1,0 +1,47 @@
+{
+  "2019-CVR.xlsx": {
+    "mtime_iso": "2026-05-24T11:34:33Z",
+    "sha256": "447217d6eb02a399badf85ea7605b3a89d2437e42b20373e786d6b84d6b19ae3",
+    "size": 16789916
+  },
+  "2020-CVR.xlsx": {
+    "mtime_iso": "2026-05-24T11:34:33Z",
+    "sha256": "06cdc8d99696a7d5152d68edc18e057dd2d13b6c07524529f825215a40dd5349",
+    "size": 79925201
+  },
+  "2021-CVR.xlsx": {
+    "mtime_iso": "2026-05-24T11:34:33Z",
+    "sha256": "69f536a9646362ac0b150abcaceceff2bfaf212568180b7a66fcb104a537505d",
+    "size": 13837396
+  },
+  "2022-CVR.xlsx": {
+    "mtime_iso": "2026-05-24T11:34:33Z",
+    "sha256": "0b4462680072c836ed570973087f972014ffd2a8c62a7703d1fcacc9d2f2b88c",
+    "size": 81508144
+  },
+  "2023-CVR.xlsx": {
+    "mtime_iso": "2026-05-24T11:34:33Z",
+    "sha256": "493651c408e125d2184c596aa51a825ae82b5c365131af4da88a889cacefa46c",
+    "size": 19162704
+  },
+  "2023-Coordinated-CVR.xlsx": {
+    "mtime_iso": "2026-05-24T11:34:33Z",
+    "sha256": "8c0fb890040ae98873a6d957feddf2e1871fc559da5d783089bab4aec584c942",
+    "size": 19645248
+  },
+  "2024-General-CVR.xlsx": {
+    "mtime_iso": "2026-05-24T11:34:33Z",
+    "sha256": "082ee31de1797b8874d181f6f5bac16c7588f8b0e4e7913f5ac12f575f7a4a63",
+    "size": 85031622
+  },
+  "2024-Primary-CVR.xlsx": {
+    "mtime_iso": "2026-05-24T11:34:33Z",
+    "sha256": "fdf61923f3fc0d824649e3479c0bd5cefeec261069b028335c67227d6d690a0b",
+    "size": 6617578
+  },
+  "2025-Coordinated-CVR.xlsx": {
+    "mtime_iso": "2026-05-24T11:34:33Z",
+    "sha256": "46ff9ee322074e7e399b2a882756a12fb2b9b8526ebc98335a42667aa6abff4e",
+    "size": 17408015
+  }
+}

@@ -1,71 +1,106 @@
-# Cast-Vote-Records
+# Boulder County Cast Vote Records, 2019–2025
 
-Boulder County Cast Vote Records — retrieval, cleaning, and twin-path UMAP / HDBSCAN clustering of City of Boulder voting patterns, 2019–2025.
+A liberated, documented, reproducible archive of ballot-level Cast Vote Records (CVRs) from Boulder County, Colorado — every election from the 2019 Coordinated through the 2025 Coordinated. The wide-format CSVs in `data/processed/` are ready for pandas, R, or any tool that reads CSVs; the source XLSX files in `data/original/` are the immutable originals released by the Boulder County Clerk or obtained via Colorado Open Records Act disclosure.
 
-The repository pairs a tested Python pipeline (`cvr_pipeline/`) that turns raw redacted CVR xlsx files into tidy wide-format CSVs with a single analysis notebook (`clusters.ipynb`) that runs a McInnes-style two-pass UMAP + HDBSCAN per election and renders a small-multiples comparison. See [`AGENT.md`](AGENT.md) for architecture, the Colorado Risk-Limiting Audit context that makes these files public, the NIST CVR data model, and design decisions.
+The project follows the [data-liberation](https://github.com/brianckeegan/data-liberation-skill) convention pragmatically — `scripts/` package, `data/{original,processed,audit,lookups}/`, SHA-256 manifest, per-extract provenance sidecar, pandera-validated schema, Markdown audit report. Architecture, design decisions, and contribution guidelines live in [`AGENTS.md`](AGENTS.md).
 
-## Quickstart
+## What's in here
 
+Nine original CVR files (seven elections plus a CORA-disclosed 2023 alongside the public version, and the empty-but-archived 2024 Primary) and seven processed wide-format CSVs of City-of-Boulder ballots:
+
+| Election | Provenance | City of Boulder ballots | Contest columns |
+| --- | --- | ---: | ---: |
+| [2019 Coordinated](data/processed/2019-Coordinated-city-of-boulder-wide.csv) | CORA | ~35,000 | 33 |
+| [2020 General](data/processed/2020-General-city-of-boulder-wide.csv) | CORA | ~63,000 | ~105 |
+| [2021 Coordinated](data/processed/2021-Coordinated-city-of-boulder-wide.csv) | CORA | ~34,000 | ~99 |
+| [2022 General](data/processed/2022-General-city-of-boulder-wide.csv) | CORA | ~94,000 | ~128 |
+| [2023 Coordinated](data/processed/2023-Coordinated-city-of-boulder-wide.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx) | ~34,000 | 50 |
+| 2024 Primary | [public](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx) | 0 (partisan primary, no city contests) | — |
+| [2024 General](data/processed/2024-General-city-of-boulder-wide.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx) | ~114,000 | ~106 |
+| [2025 Coordinated](data/processed/2025-Coordinated-city-of-boulder-wide.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx) | ~34,000 | 35 |
+
+Headline exact numbers are pinned in [`data/processed/_summary.csv`](data/processed/_summary.csv) and the latest [`data/audit/summary.md`](data/audit/summary.md).
+
+Each row in a processed CSV is one **ballot sheet** (per [NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103)). A sample of the 2023 Coordinated:
+
+| `_ID/CvrNumber` | `_ID/TabulatorNum` | `_ID/BallotType` | `City of Boulder Mayoral Candidates …::Aaron Brockett(1)` | `City of Boulder Ballot Issue 2A …::Yes` |
+| --- | --- | --- | ---: | ---: |
+| 1 | 108 | DS-01 | 1 | 1 |
+| 2 | 108 | DS-01 | 0 | 0 |
+| 3 | 108 | DS-01 | 0 | NaN |
+| 4 | 108 | DS-01 | 0 | 1 |
+| 5 | 108 | DS-01 | 1 | 1 |
+
+Cell values: `1` = the scanner detected a mark in the bubble; `0` = the bubble was on the ballot for this style and was not marked; missing = the contest was not on this voter's ballot style. The full data dictionary lives in [`docs/data-dictionary.md`](docs/data-dictionary.md); pandas / R / SQL slicing recipes are in [`docs/filter-pivot-recipes.md`](docs/filter-pivot-recipes.md).
+
+## Movement context
+
+Boulder County publishes its CVRs because Colorado statute requires risk-limiting audits of every machine-tabulated election. [C.R.S. § 1-7-515](https://www.coloradosos.gov/pubs/elections/RLA/faqs.html) was authorized by the General Assembly in 2009; the [2017 Coordinated Election](https://www.npr.org/2017/11/22/566039611/colorado-launches-first-in-the-nation-post-election-audits) was the first statewide RLA — the first such audit anywhere in the United States. The Colorado Department of State's [`cdos-rla/colorado-rla`](https://github.com/cdos-rla/colorado-rla) software ingests these same Dominion XLSX exports as audit input. Civic-data tradition: a public dataset that exists *because* an open-government law required it.
+
+## Load
+
+### pandas
+
+```python
+import pandas as pd
+df = pd.read_csv("data/processed/2023-Coordinated-city-of-boulder-wide.csv",
+                 low_memory=False)
 ```
-pip install -e ".[analysis,test]"
-git lfs pull           # fetch CVR xlsx + clean CSVs
-pytest                 # ~18 tests, < 1 second
-python -m cvr_pipeline build   # regenerate data/clean/ from data/raw/
-jupyter notebook clusters.ipynb
+
+### R / tidyverse
+
+```r
+library(readr)
+df <- read_csv("data/processed/2023-Coordinated-city-of-boulder-wide.csv",
+               show_col_types = FALSE)
 ```
 
-## Data
+### DuckDB
 
-Eight redacted CVRs covering 2019–2025 live in `data/raw/` and are versioned via Git LFS:
-
-| Election | Source | Notes |
-| --- | --- | --- |
-| 2019 Coordinated | CORA | not on bouldercounty.gov by-year pages |
-| 2020 General | CORA | presidential cycle |
-| 2021 Coordinated | CORA | |
-| 2022 General | CORA | midterm cycle |
-| 2023 Coordinated | [public](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx) | first publicly posted Boulder County CVR; ranked-choice mayoral |
-| 2024 Primary | [public](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx) | partisan only; no City of Boulder municipal contests |
-| 2024 General | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx) | pre-recount |
-| 2025 Coordinated | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx) | |
-
-Cleaned wide CSVs (one row per City of Boulder ballot, one column per contest-choice) appear in `data/clean/` after running the pipeline.
-
-## What's where
-
-```
-cvr_pipeline/    # Python package (loader, cleaner, sources, CLI)
-tests/           # pytest with a synthetic xlsx fixture
-clusters.ipynb   # single analysis notebook
-data/raw/        # CVR xlsx (LFS-tracked)
-data/clean/      # generated wide CSVs and cluster outputs (LFS-tracked)
-AGENT.md         # architecture, decisions, contribution, limitations, future work
+```sql
+SELECT * FROM read_csv_auto('data/processed/2023-Coordinated-city-of-boulder-wide.csv') LIMIT 5;
 ```
 
-## Layout of a cleaned CSV
+More recipes — wide→long pivots, cross-election pools, undervote-vs-ineligible — in [`docs/filter-pivot-recipes.md`](docs/filter-pivot-recipes.md).
 
-Rows are City of Boulder ballots (one row per ballot sheet, per [NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103)); columns are flattened from the CVR's two-level header:
+## Provenance and refresh
 
-- ID columns prefixed `_ID/`: `_ID/CvrNumber` (= NIST `CVR::UniqueId`), `_ID/TabulatorNum`, `_ID/BatchId`, `_ID/RecordId`, `_ID/ImprintedId`, optionally `_ID/CountingGroup`, `_ID/PrecinctPortion`, `_ID/BallotType` (= NIST `CVR::BallotStyleId`).
-- One column per `Contest::Choice` (e.g. `City of Boulder Council Candidates (Vote For=4)::Nicole Speer`). Ranked-choice contests have one column per candidate-rank pair, e.g. `City of Boulder Mayoral Candidates (...)::Aaron Brockett(1)` for rank 1.
+Every file in `data/original/` is hashed in [`data/original/manifest.json`](data/original/manifest.json) with a SHA-256, byte count, and mtime. [`data/processed/provenance.csv`](data/processed/provenance.csv) joins each processed CSV back to its source xlsx (URL, hash, retrieval time). The audit report in [`data/audit/summary.md`](data/audit/summary.md) is regenerated on every `python -m scripts.audit` run.
 
-Cell values:
+The Boulder County Clerk publishes a new CVR within about two months of every election. To pull the latest:
 
-- `1` = the scanner detected a mark in the bubble (NIST `SelectionPosition::HasIndication = yes`)
-- `0` = the bubble was on the ballot for this style and was not marked
-- missing (`NaN`) = the contest was not on the voter's ballot style
+```bash
+pip install -e ".[analysis]"
+python -m scripts.pipeline        # fetch → clean → audit
+```
 
-Note: per NIST, `HasIndication` is distinct from `IsAllocable` (vote countability under contest rules). The Dominion interpreted-snapshot collapses both. For interpretation of these distinctions see [`AGENT.md`](AGENT.md).
+To opt into scheduled refresh PRs via GitHub Actions, rename [`.github/workflows/refresh.yml.disabled`](.github/workflows/refresh.yml.disabled) to `refresh.yml`.
 
-## References
+## Quickstart for analysts
 
-The terminology and data-model assumptions in this repository follow the canonical Cast Vote Record literature and the Colorado RLA framework that makes these files public:
+```bash
+git clone https://github.com/BoulderPublicData/Cast-Vote-Records
+cd Cast-Vote-Records
+git lfs pull                            # fetch the xlsx + processed CSVs
+pip install -e ".[analysis]"
+jupyter notebook clusters.ipynb         # twin-path UMAP + HDBSCAN small-multiples
+```
 
-- [NIST SP 1500-103, *Cast Vote Records Common Data Format Specification* v1.0](https://doi.org/10.6028/NIST.SP.1500-103) (Wack, Dana, Deutsch, Dziurlaj, Piper; NIST 2019). The CVR data model — snapshot types, identifiers, contest representations, RCV encoding.
-- [Lutz, *Auditing Elections Using Ballot Images and AuditEngine — General Background* (2022)](https://copswiki.org/w/pub/Common/M1986/Auditing%20Elections%20Using%20Ballot%20Images%20and%20AuditEngine%20--%20General%20Background.pdf). Practical Dominion-CVR workflow reference; §3.1.2 covers the voter-privacy aggregation conventions Boulder uses.
-- [Colorado Secretary of State — Risk-Limiting Audit FAQ](https://www.coloradosos.gov/pubs/elections/RLA/faqs.html). The legal and procedural basis (C.R.S. § 1-7-515, 2009) for why CVRs leave the County in the first place.
-- [`cdos-rla/colorado-rla`](https://github.com/cdos-rla/colorado-rla). The audit software (Free and Fair, 2017; IRV extension by Democracy Developers, 2023–2025) that consumes these CVRs as input.
+The analysis notebook ([`clusters.ipynb`](clusters.ipynb)) runs the McInnes two-pass UMAP + HDBSCAN pipeline on every processed CSV and renders a small-multiples comparison across elections. See [`AGENTS.md`](AGENTS.md) for the methodological rationale.
+
+## Citation
+
+```bibtex
+@misc{boulder_county_cvr,
+  author = {Keegan, Brian C.},
+  title  = {Boulder County Cast Vote Records, 2019--2025},
+  year   = {2026},
+  url    = {https://github.com/BoulderPublicData/Cast-Vote-Records},
+  note   = {Compiled from publicly posted and CORA-disclosed Dominion CVR exports}
+}
+```
 
 ## License
 
-MIT. CVR data is public record released by the Boulder County Clerk and Recorder.
+* **Code** (pipeline, tests, notebook, docs prose): [MIT](LICENSE).
+* **Data** (xlsx originals + processed CSVs): public-record release by the Boulder County Clerk and Recorder; redistributed here under [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) with attribution to the County.

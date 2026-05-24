@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cvr-pipeline"
-version = "0.1.0"
+version = "0.2.0"
 description = "Boulder County Cast Vote Record retrieval, cleaning, and clustering"
 requires-python = ">=3.10"
 readme = "README.md"
@@ -15,6 +15,9 @@ dependencies = [
     "numpy>=1.24",
     "openpyxl>=3.1",
     "requests>=2.31",
+    # data-liberation extras: schema validation + audit report formatting
+    "pandera[pandas]>=0.20",
+    "tabulate>=0.9",
 ]
 
 [project.optional-dependencies]
@@ -25,13 +28,17 @@ analysis = [
     "umap-learn>=0.5.5",
     "hdbscan>=0.8.33",
 ]
+publish = [
+    "datasette>=1.0",
+    "sqlite-utils>=3.36",
+]
 test = ["pytest>=7"]
 
 [project.scripts]
-cvr-pipeline = "cvr_pipeline.cli:main"
+cvr-pipeline = "scripts.pipeline:main"
 
 [tool.setuptools.packages.find]
-include = ["cvr_pipeline*"]
+include = ["scripts*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

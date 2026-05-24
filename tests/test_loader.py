@@ -1,10 +1,10 @@
-"""Tests for the loader (header reconstruction)."""
+"""Tests for the Dominion-XLSX loader."""
 
 from __future__ import annotations
 
 import pandas as pd
 
-from cvr_pipeline.loader import (
+from scripts.loader import (
     ID_LABELS,
     REDACTED_VALUES,
     contest_columns,
@@ -17,8 +17,6 @@ from cvr_pipeline.loader import (
 def test_load_raw_cvr_rebuilds_multiindex(minimal_cvr_path):
     df = load_raw_cvr(minimal_cvr_path)
     assert isinstance(df.columns, pd.MultiIndex)
-
-    # Six ID columns at the front
     assert id_columns(df) == [
         ("_ID", "CvrNumber"),
         ("_ID", "TabulatorNum"),
@@ -27,9 +25,8 @@ def test_load_raw_cvr_rebuilds_multiindex(minimal_cvr_path):
         ("_ID", "ImprintedId"),
         ("_ID", "BallotType"),
     ]
-
-    # 20 rows: 12 city + 6 Longmont + 1 sentinel-redacted + 1 NaN-CvrNumber aggregate
-    assert len(df) == 20
+    # 21 rows: 12 city + 6 Longmont + 1 sentinel + 1 NaN-CvrNumber + 1 NaN-TabulatorNum
+    assert len(df) == 21
 
 
 def test_load_raw_cvr_contest_columns(minimal_cvr_path):
@@ -37,18 +34,14 @@ def test_load_raw_cvr_contest_columns(minimal_cvr_path):
     contests = unique_contests(df)
     assert "City of Boulder Council Candidates (Vote For=1)" in contests
     assert "City of Longmont - Mayor (Vote For=1)" in contests
-
-    # And the contest columns are (contest, candidate)
     cob_cols = [
         c for c in contest_columns(df)
         if c[0] == "City of Boulder Council Candidates (Vote For=1)"
     ]
-    candidates = {c[1] for c in cob_cols}
-    assert candidates == {"Alice", "Bob", "Carol"}
+    assert {c[1] for c in cob_cols} == {"Alice", "Bob", "Carol"}
 
 
 def test_id_labels_includes_all_known_variants():
-    # Spot-check that every label our real-world CVRs use is present
     for label in (
         "CvrNumber", "TabulatorNum", "BatchId", "RecordId",
         "ImprintedId", "BallotType", "CountingGroup", "PrecinctPortion",
