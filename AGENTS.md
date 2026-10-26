@@ -127,6 +127,7 @@ The County protects ballot secrecy in two ways, and the cleaner treats them diff
 * **Empirical sheet-order wins over heuristics.** Within each BallotType, sheet 1 is whichever fingerprint appears first by RecordId in `(Tab, Batch)` groups (trusting the scanner). The contest-count heuristic (more non-null columns = sheet 1) is a sanity check; disagreement logs a warning rather than overriding.
 * **Per-extract provenance, not per-row.** `data/processed/cast-vote-records/provenance.csv` keyed on `election_key`; `data/processed/clusters/provenance.csv` keyed on output file.
 * **One key format across repos.** `election_key` is `{year}-{type}` in lowercase, exactly as in BoulderPublicData/Election-Results (`2024-general`), so the two datasets join without a crosswalk; `reconcile --sov` relies on it.
+* **Reconcile at the published grain, with a second reader.** `reconcile` re-reads every original with calamine (the loader uses openpyxl) and re-applies the redaction rule from scratch. It then checks the totals of every contest-choice column against the raw file, and exits non-zero on any mismatch. Before 2026-10 it could not fail: a processed CSV truncated to its header still passed (#8). A new output column or table needs a matching reconcile check before it ships.
 * **Immutable originals.** Files in `data/original/` are write-only from `scripts.fetch`. Re-running the cleaner does not touch them.
 * **Errors durable, not fatal.** The CLI's `--fail-on-empty` flag turns silent regressions loud.
 
