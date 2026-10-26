@@ -23,8 +23,9 @@ def test_processed_files_use_current_keys(repo_root):
     clusters = repo_root / "data" / "processed" / "clusters"
     for p in clusters.glob("*-ballots-with-clusters.csv"):
         assert p.name.removesuffix("-ballots-with-clusters.csv") in keys, p.name
-    assert not list((repo_root / "data" / "processed").glob("*.csv")), \
+    assert not list((repo_root / "data" / "processed").glob("*.csv")), (
         "processed CSVs belong in a dataset subfolder"
+    )
 
 
 def test_processed_outputs_are_lfs_tracked(repo_root):
@@ -34,6 +35,11 @@ def test_processed_outputs_are_lfs_tracked(repo_root):
         "data/processed/clusters/provenance.csv",
         "data/processed/clusters/city-of-boulder-cluster-smallmultiples.png",
     ]
-    out = subprocess.run(["git", "check-attr", "filter", "--", *paths],
-                         cwd=repo_root, capture_output=True, text=True, check=True).stdout
+    out = subprocess.run(
+        ["git", "check-attr", "filter", "--", *paths],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
     assert out.count("filter: lfs") == len(paths), out

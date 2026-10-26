@@ -13,8 +13,12 @@ Two typing notes for every recipe:
 
 ```python
 import pandas as pd
-df = pd.read_csv("data/processed/cast-vote-records/2023-coordinated-county-wide-by-voter.csv",
-                 dtype={"_ID/BallotType": str}, low_memory=False)
+
+df = pd.read_csv(
+    "data/processed/cast-vote-records/2023-coordinated-county-wide-by-voter.csv",
+    dtype={"_ID/BallotType": str},
+    low_memory=False,
+)
 df.shape
 ```
 
@@ -64,8 +68,7 @@ The share among voters who had the contest on their ballot. Blank cells (not on 
 ### pandas
 
 ```python
-mayor_cols = [c for c in city.columns
-              if c.startswith("City of Boulder Mayoral Candidates")]
+mayor_cols = [c for c in city.columns if c.startswith("City of Boulder Mayoral Candidates")]
 city[mayor_cols].mean().sort_values(ascending=False)
 ```
 
@@ -85,12 +88,12 @@ city |>
 ### pandas
 
 ```python
-id_cols     = [c for c in df.columns if c.startswith("_ID/")]
+id_cols = [c for c in df.columns if c.startswith("_ID/")]
 choice_cols = [c for c in df.columns if not c.startswith("_ID/")]
 
-long = (df.melt(id_vars=id_cols, value_vars=choice_cols,
-                var_name="contest_choice", value_name="mark")
-          .dropna(subset=["mark"]))
+long = df.melt(
+    id_vars=id_cols, value_vars=choice_cols, var_name="contest_choice", value_name="mark"
+).dropna(subset=["mark"])
 long[["contest", "choice"]] = long["contest_choice"].str.split("::", n=1, expand=True)
 long = long.drop(columns="contest_choice")
 ```
@@ -112,15 +115,16 @@ long <- df |>
 
 ```python
 from pathlib import Path
+
 frames = []
 for path in sorted(Path("data/processed/cast-vote-records").glob("*-county-wide-by-voter.csv")):
     election = path.name.removesuffix("-county-wide-by-voter.csv")
     df = pd.read_csv(path, dtype={"_ID/BallotType": str}, low_memory=False)
-    id_cols     = [c for c in df.columns if c.startswith("_ID/")]
+    id_cols = [c for c in df.columns if c.startswith("_ID/")]
     choice_cols = [c for c in df.columns if not c.startswith("_ID/")]
-    long = (df.melt(id_vars=id_cols, value_vars=choice_cols,
-                    var_name="contest_choice", value_name="mark")
-              .dropna(subset=["mark"]))
+    long = df.melt(
+        id_vars=id_cols, value_vars=choice_cols, var_name="contest_choice", value_name="mark"
+    ).dropna(subset=["mark"])
     long["election"] = election
     frames.append(long)
 all_long = pd.concat(frames, ignore_index=True)
@@ -142,7 +146,9 @@ A contest-level undervote is a voter whose cells for that contest are **all** `0
 ## Join cluster labels
 
 ```python
-clusters = pd.read_csv("data/processed/clusters/2023-coordinated-ballots-with-clusters.csv",
-                       usecols=["_ID/voter_id", "cluster"])
-df = df.merge(clusters, on="_ID/voter_id", how="left")   # NaN cluster = not clustered
+clusters = pd.read_csv(
+    "data/processed/clusters/2023-coordinated-ballots-with-clusters.csv",
+    usecols=["_ID/voter_id", "cluster"],
+)
+df = df.merge(clusters, on="_ID/voter_id", how="left")  # NaN cluster = not clustered
 ```

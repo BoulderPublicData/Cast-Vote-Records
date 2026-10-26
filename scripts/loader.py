@@ -74,38 +74,44 @@ from pathlib import Path
 import ftfy
 import pandas as pd
 
-ID_LABELS: frozenset[str] = frozenset({
-    "CvrNumber",
-    "TabulatorNum",
-    "BatchId",
-    "RecordId",
-    "ImprintedId",
-    "CountingGroup",
-    "PrecinctPortion",
-    "BallotType",
-})
+ID_LABELS: frozenset[str] = frozenset(
+    {
+        "CvrNumber",
+        "TabulatorNum",
+        "BatchId",
+        "RecordId",
+        "ImprintedId",
+        "CountingGroup",
+        "PrecinctPortion",
+        "BallotType",
+    }
+)
 """All known ID-column labels across Boulder County CVRs 2019–2025."""
 
-SINGLE_BALLOT_SENTINELS: frozenset[str] = frozenset({
-    "Redacted",                         # 2024 Primary, 2025 Coordinated
-    "RCV Redacted & Randomly Sorted",   # 2023 Coordinated
-})
+SINGLE_BALLOT_SENTINELS: frozenset[str] = frozenset(
+    {
+        "Redacted",  # 2024 Primary, 2025 Coordinated
+        "RCV Redacted & Randomly Sorted",  # 2023 Coordinated
+    }
+)
 """``CvrNumber`` strings the County uses for an **individual** ballot whose
 identifiers (``TabulatorNum`` / ``BatchId`` / ``RecordId`` / ``ImprintedId``)
 were blanked for privacy. Each such row still records exactly one ballot's
 marks (every contest cell is 0, 1 or blank), so the cleaner keeps it and
 flags it with ``_ID/redacted = True``."""
 
-AGGREGATE_SENTINELS: frozenset[str] = frozenset({
-    "Redacted & Aggregated",                     # 2023 Coordinated
-    "Redacted and Aggregated - A cards",         # 2024 General
-    "Redacted and Aggregated - B cards",         # 2024 General
-    "Redacted and Aggregated - B cards or Property Owner Ballot",  # 2024 General
-    "Redacted and Consolidated",                 # 2024 Primary
-    "Redacted and Consolidated 10 Ballots",      # 2025 Coordinated
-    "Redacted and Consolidated 18 Ballots",      # 2025 Coordinated
-    "Redacted and Consolidated 20 Ballots",      # 2025 Coordinated
-})
+AGGREGATE_SENTINELS: frozenset[str] = frozenset(
+    {
+        "Redacted & Aggregated",  # 2023 Coordinated
+        "Redacted and Aggregated - A cards",  # 2024 General
+        "Redacted and Aggregated - B cards",  # 2024 General
+        "Redacted and Aggregated - B cards or Property Owner Ballot",  # 2024 General
+        "Redacted and Consolidated",  # 2024 Primary
+        "Redacted and Consolidated 10 Ballots",  # 2025 Coordinated
+        "Redacted and Consolidated 18 Ballots",  # 2025 Coordinated
+        "Redacted and Consolidated 20 Ballots",  # 2025 Coordinated
+    }
+)
 """``CvrNumber`` strings observed on **aggregate** rows: one row summing the
 marks of several ballots (cell values > 1). The cleaner classifies aggregates
 by pattern (label contains "Consolidated" or "Aggregated") or by value (any

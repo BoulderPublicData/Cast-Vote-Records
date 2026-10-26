@@ -34,6 +34,11 @@ def ensure_dirs() -> None:
     """Create every project data directory if it does not exist."""
     from . import config  # read the attributes at call time (tests patch them)
 
-    for d in (config.ORIGINAL_DIR, config.PROCESSED_DIR, config.CVR_DIR,
-              config.AUDIT_DIR, config.LOOKUPS_DIR):
+    for d in (
+        config.ORIGINAL_DIR,
+        config.PROCESSED_DIR,
+        config.CVR_DIR,
+        config.AUDIT_DIR,
+        config.LOOKUPS_DIR,
+    ):
         d.mkdir(parents=True, exist_ok=True)

@@ -19,8 +19,12 @@ def _paths(env_value: str | None) -> list[str]:
         "print(c.DATA_DIR, c.ORIGINAL_DIR, c.CVR_DIR, c.CLUSTERS_DIR, c.AUDIT_DIR, sep='\\n')"
     )
     out = subprocess.run(
-        [sys.executable, "-c", code], cwd=ROOT, env=env,
-        capture_output=True, text=True, check=True,
+        [sys.executable, "-c", code],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return out.stdout.splitlines()
 

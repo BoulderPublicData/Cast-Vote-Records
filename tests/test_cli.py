@@ -23,7 +23,8 @@ def test_defaults_are_filled():
 def test_election_either_side():
     assert parse_args(["-e", "2024-general", "clean"]).election == ["2024-general"]
     assert parse_args(["clean", "-e", "2024-general", "-e", "2025-coordinated"]).election == [
-        "2024-general", "2025-coordinated",
+        "2024-general",
+        "2025-coordinated",
     ]
 
 
@@ -32,12 +33,15 @@ def test_full_run_takes_shared_options():
     assert a.cmd is None and a.quiet and a.force and a.election == ["2024-general"]
 
 
-@pytest.mark.parametrize("argv", [
-    ["-e", "2023-coordinated", "audit"],
-    ["audit", "-e", "2023-coordinated"],
-    ["clean", "--force"],
-    ["reconcile", "--fail-on-empty"],
-])
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["-e", "2023-coordinated", "audit"],
+        ["audit", "-e", "2023-coordinated"],
+        ["clean", "--force"],
+        ["reconcile", "--fail-on-empty"],
+    ],
+)
 def test_option_a_command_ignores_is_an_error(argv, capsys):
     with pytest.raises(SystemExit) as exc:
         parse_args(argv)

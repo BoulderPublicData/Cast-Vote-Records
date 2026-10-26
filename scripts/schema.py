@@ -71,23 +71,28 @@ ID_BLOCK_SCHEMA: pa.DataFrameSchema = pa.DataFrameSchema(
     columns={
         # Redacted single ballots have blanked identifiers; the dataframe
         # check below requires them on every other row.
-        "_ID/CvrNumber":    pa.Column(nullable=True),
+        "_ID/CvrNumber": pa.Column(nullable=True),
         "_ID/TabulatorNum": pa.Column(nullable=True),
-        "_ID/BatchId":      pa.Column(nullable=True),
-        "_ID/RecordId":     pa.Column(nullable=True),
-        "_ID/ImprintedId":  pa.Column(nullable=True),
-        "_ID/BallotType":   pa.Column(
+        "_ID/BatchId": pa.Column(nullable=True),
+        "_ID/RecordId": pa.Column(nullable=True),
+        "_ID/ImprintedId": pa.Column(nullable=True),
+        "_ID/BallotType": pa.Column(
             nullable=True,
-            checks=pa.Check(_is_str_or_na, element_wise=False,
-                            error="BallotType must be a string (e.g. '01', 'DS-01')"),
+            checks=pa.Check(
+                _is_str_or_na,
+                element_wise=False,
+                error="BallotType must be a string (e.g. '01', 'DS-01')",
+            ),
         ),
-        "_ID/n_sheets":     pa.Column(int, checks=pa.Check.ge(1), nullable=False),
-        "_ID/voter_id":     pa.Column(nullable=False, unique=True),
-        "_ID/redacted":     pa.Column(bool, nullable=False),
+        "_ID/n_sheets": pa.Column(int, checks=pa.Check.ge(1), nullable=False),
+        "_ID/voter_id": pa.Column(nullable=False, unique=True),
+        "_ID/redacted": pa.Column(bool, nullable=False),
     },
     checks=[
-        pa.Check(_ids_present_unless_redacted,
-                 error="non-redacted row without numeric CvrNumber/TabulatorNum"),
+        pa.Check(
+            _ids_present_unless_redacted,
+            error="non-redacted row without numeric CvrNumber/TabulatorNum",
+        ),
     ],
     strict=False,
     coerce=False,
@@ -143,9 +148,7 @@ def validate_contest_columns(
         vals = pd.to_numeric(s, errors="coerce")
         lost = s.notna() & vals.isna()
         if lost.any():
-            lost[lost] = ~s[lost].map(
-                lambda v: isinstance(v, str) and not v.strip()
-            ).astype(bool)
+            lost[lost] = ~s[lost].map(lambda v: isinstance(v, str) and not v.strip()).astype(bool)
         if lost.any():
             sample = sorted({str(v) for v in s[lost].unique()})[:5]
             bad.append(f"{col}: non-numeric {sample}")
@@ -156,7 +159,6 @@ def validate_contest_columns(
             bad.append(f"{col}: {sorted(unexpected)[:5]}")
     if bad:
         raise ValueError(
-            f"contest columns hold unexpected values in {len(bad)} columns; "
-            f"first 5: {bad[:5]}"
+            f"contest columns hold unexpected values in {len(bad)} columns; first 5: {bad[:5]}"
         )
     return df

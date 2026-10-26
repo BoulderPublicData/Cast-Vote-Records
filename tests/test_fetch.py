@@ -67,8 +67,13 @@ def test_fetch_fails_on_hash_mismatch_without_rewriting(orig: Path):
 
 
 def test_update_manifest_accepts_a_deliberate_change(orig: Path):
-    manifest = {"2023-Coordinated-CVR.xlsx": {"sha256": "0" * 64, "size": 1,
-                                              "first_committed_at": "2026-05-23T19:03:50Z"}}
+    manifest = {
+        "2023-Coordinated-CVR.xlsx": {
+            "sha256": "0" * 64,
+            "size": 1,
+            "first_committed_at": "2026-05-23T19:03:50Z",
+        }
+    }
     (orig / "manifest.json").write_text(json.dumps(manifest))
     out = fetch_mod.fetch(update_manifest=True, verbose=False)
     entry = out["2023-Coordinated-CVR.xlsx"]
@@ -78,16 +83,20 @@ def test_update_manifest_accepts_a_deliberate_change(orig: Path):
 
 def test_matching_manifest_is_kept_and_mtime_is_never_recorded(orig: Path):
     digest = fetch_mod.sha256_file(orig / "2023-Coordinated-CVR.xlsx")
-    manifest = {"2023-Coordinated-CVR.xlsx": {
-        "sha256": digest, "size": 1, "mtime_iso": "2026-05-24T11:34:33Z",
-        "retrieved_at": "2023-11-29T00:00:00Z",
-    }}
+    manifest = {
+        "2023-Coordinated-CVR.xlsx": {
+            "sha256": digest,
+            "size": 1,
+            "mtime_iso": "2026-05-24T11:34:33Z",
+            "retrieved_at": "2023-11-29T00:00:00Z",
+        }
+    }
     (orig / "manifest.json").write_text(json.dumps(manifest))
     out = fetch_mod.fetch(verbose=False)
     entry = out["2023-Coordinated-CVR.xlsx"]
     assert "mtime_iso" not in entry
     assert entry["retrieved_at"] == "2023-11-29T00:00:00Z"
-    assert "xlsx_modified" in entry   # workbook's own timestamp
+    assert "xlsx_modified" in entry  # workbook's own timestamp
 
 
 def test_download_records_retrieved_at(orig: Path, monkeypatch):
@@ -99,6 +108,7 @@ def test_download_records_retrieved_at(orig: Path, monkeypatch):
                 "source_last_modified": "2025-12-02T00:54:26Z",
             }
         return None
+
     monkeypatch.setattr(fetch_mod, "download_one", fake_download)
     monkeypatch.setattr(fetch_mod, "_now", lambda: "2026-10-26T00:00:00Z")
     out = fetch_mod.fetch(verbose=False)

@@ -143,16 +143,16 @@ def clean(
         if res.n_voters == 0:
             if verbose:
                 print(
-                    f"  [empty] {src.election_key}: 0 voters after dropping "
-                    f"aggregate rows",
+                    f"  [empty] {src.election_key}: 0 voters after dropping aggregate rows",
                     flush=True,
                 )
         else:
             res.cleaned.to_csv(out_path, index=False)
             n_total_voters += res.n_voters
             if verbose:
-                dist = ", ".join(f"{k}-sheet:{v:,}" for k, v
-                                 in sorted(res.sheet_count_distribution.items()))
+                dist = ", ".join(
+                    f"{k}-sheet:{v:,}" for k, v in sorted(res.sheet_count_distribution.items())
+                )
                 print(
                     f"  [ok]   {src.election_key}: "
                     f"{res.n_sheets_after_redaction:,} sheets → "
@@ -169,49 +169,51 @@ def clean(
             all_warnings.append(f"[{src.election_key}] {w}")
 
         manifest_entry = manifest.get(src.filename, {})
-        summary_rows.append({
-            "election_key":            res.election_key,
-            "year":                    src.year,
-            "election_type":           src.election_type,
-            "n_raw_rows":              res.n_raw_rows,
-            "n_aggregate_rows_dropped": res.n_aggregate_rows_dropped,
-            "n_redacted_kept":         res.n_redacted_kept,
-            "n_redacted_in_multisheet_styles": res.n_redacted_in_multisheet_styles,
-            "n_sheets_after_redaction": res.n_sheets_after_redaction,
-            "n_voters":                res.n_voters,
-            "n_out_of_order_merges":   res.n_out_of_order_merges,
-            "n_rare_fingerprint_sheets": res.n_rare_fingerprint_sheets,
-            "n_rare_fingerprint_full_ballot": res.n_rare_fingerprint_full_ballot,
-            "n_choice_columns":        res.n_choice_columns,
-            "multi_sheet_ballot_types": ",".join(res.multi_sheet_ballot_types),
-            "sheet_count_distribution": json.dumps(
-                {str(k): v for k, v in
-                 sorted(res.sheet_count_distribution.items())}
-            ),
-            "n_warnings":              len(res.warnings),
-            "public_url":              src.public_url or "",
-        })
-        provenance_rows.append({
-            "election_key":        res.election_key,
-            "original_filename":   src.filename,
-            "original_sha256":     manifest_entry.get("sha256", ""),
-            "original_size_bytes": manifest_entry.get("size", ""),
-            "public_url":          src.public_url or "",
-            "source_page":         src.source_page or "",
-            "retrieved_at":        manifest_entry.get("retrieved_at", ""),
-            "source_last_modified": manifest_entry.get("source_last_modified", ""),
-            "obtained_at":         manifest_entry.get("obtained_at", "") or src.obtained_at,
-            "first_committed_at":  manifest_entry.get("first_committed_at", ""),
-            "original_xlsx_modified": manifest_entry.get("xlsx_modified", ""),
-            "processed_path":      (
-                str(out_path.relative_to(config.CVR_DIR.parent.parent.parent))
-                if res.n_voters else ""
-            ),
-            "extracted_at":        time.strftime(
-                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
-            ),
-            "notes":               src.notes,
-        })
+        summary_rows.append(
+            {
+                "election_key": res.election_key,
+                "year": src.year,
+                "election_type": src.election_type,
+                "n_raw_rows": res.n_raw_rows,
+                "n_aggregate_rows_dropped": res.n_aggregate_rows_dropped,
+                "n_redacted_kept": res.n_redacted_kept,
+                "n_redacted_in_multisheet_styles": res.n_redacted_in_multisheet_styles,
+                "n_sheets_after_redaction": res.n_sheets_after_redaction,
+                "n_voters": res.n_voters,
+                "n_out_of_order_merges": res.n_out_of_order_merges,
+                "n_rare_fingerprint_sheets": res.n_rare_fingerprint_sheets,
+                "n_rare_fingerprint_full_ballot": res.n_rare_fingerprint_full_ballot,
+                "n_choice_columns": res.n_choice_columns,
+                "multi_sheet_ballot_types": ",".join(res.multi_sheet_ballot_types),
+                "sheet_count_distribution": json.dumps(
+                    {str(k): v for k, v in sorted(res.sheet_count_distribution.items())}
+                ),
+                "n_warnings": len(res.warnings),
+                "public_url": src.public_url or "",
+            }
+        )
+        provenance_rows.append(
+            {
+                "election_key": res.election_key,
+                "original_filename": src.filename,
+                "original_sha256": manifest_entry.get("sha256", ""),
+                "original_size_bytes": manifest_entry.get("size", ""),
+                "public_url": src.public_url or "",
+                "source_page": src.source_page or "",
+                "retrieved_at": manifest_entry.get("retrieved_at", ""),
+                "source_last_modified": manifest_entry.get("source_last_modified", ""),
+                "obtained_at": manifest_entry.get("obtained_at", "") or src.obtained_at,
+                "first_committed_at": manifest_entry.get("first_committed_at", ""),
+                "original_xlsx_modified": manifest_entry.get("xlsx_modified", ""),
+                "processed_path": (
+                    str(out_path.relative_to(config.CVR_DIR.parent.parent.parent))
+                    if res.n_voters
+                    else ""
+                ),
+                "extracted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "notes": src.notes,
+            }
+        )
 
     summary = pd.DataFrame(summary_rows)
     if summary_rows:
@@ -221,16 +223,17 @@ def clean(
         summary = summary.set_index("election_key")
 
     if verbose and summary_rows:
-        print(f"\nupserted {len(summary_rows)} election(s) into "
-              f"{config.SUMMARY_CSV.name} + {config.PROVENANCE_CSV.name}")
+        print(
+            f"\nupserted {len(summary_rows)} election(s) into "
+            f"{config.SUMMARY_CSV.name} + {config.PROVENANCE_CSV.name}"
+        )
         if all_warnings:
             print(f"\n{len(all_warnings)} cleaner warning(s):")
             for w in all_warnings:
                 print(f"  - {w}")
 
     if failures:
-        print(f"\nFAIL: {len(failures)} election(s) failed to clean:",
-              file=sys.stderr)
+        print(f"\nFAIL: {len(failures)} election(s) failed to clean:", file=sys.stderr)
         for f in failures:
             print(f"  - {f}", file=sys.stderr)
         raise SystemExit(1)
@@ -242,16 +245,26 @@ def clean(
 
 def _main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="scripts.clean", description=__doc__)
-    p.add_argument("--election", "-e", action="append", default=[],
-                   help="process only this election_key, e.g. 2024-general (repeatable)")
-    p.add_argument("--year", action="append", type=int, default=[],
-                   help="process every election in this year (repeatable)")
-    p.add_argument("--fail-on-empty", action="store_true",
-                   help="exit non-zero if every output is empty")
+    p.add_argument(
+        "--election",
+        "-e",
+        action="append",
+        default=[],
+        help="process only this election_key, e.g. 2024-general (repeatable)",
+    )
+    p.add_argument(
+        "--year",
+        action="append",
+        type=int,
+        default=[],
+        help="process every election in this year (repeatable)",
+    )
+    p.add_argument(
+        "--fail-on-empty", action="store_true", help="exit non-zero if every output is empty"
+    )
     p.add_argument("--quiet", "-q", action="store_true")
     a = p.parse_args(argv)
-    clean(elections=a.election, years=a.year, fail_on_empty=a.fail_on_empty,
-          verbose=not a.quiet)
+    clean(elections=a.election, years=a.year, fail_on_empty=a.fail_on_empty, verbose=not a.quiet)
     return 0
 
 

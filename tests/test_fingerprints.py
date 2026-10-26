@@ -20,22 +20,26 @@ def test_single_row_returns_single_code():
 
 
 def test_identical_rows_share_fingerprint():
-    notna = np.array([
-        [True, False, True, False],
-        [True, False, True, False],
-        [True, False, True, False],
-    ])
+    notna = np.array(
+        [
+            [True, False, True, False],
+            [True, False, True, False],
+            [True, False, True, False],
+        ]
+    )
     out = _row_fingerprints(notna)
     assert len(set(out.tolist())) == 1
 
 
 def test_different_rows_get_different_fingerprints():
-    notna = np.array([
-        [True, False, True, False],   # pattern A
-        [False, True, False, True],   # pattern B (disjoint)
-        [True, False, True, False],   # pattern A again
-        [True, True, True, True],     # pattern C (full)
-    ])
+    notna = np.array(
+        [
+            [True, False, True, False],  # pattern A
+            [False, True, False, True],  # pattern B (disjoint)
+            [True, False, True, False],  # pattern A again
+            [True, True, True, True],  # pattern C (full)
+        ]
+    )
     out = _row_fingerprints(notna)
     assert out[0] == out[2]
     assert out[0] != out[1]
@@ -47,12 +51,14 @@ def test_different_rows_get_different_fingerprints():
 
 def test_codes_are_dense_zero_indexed_integers():
     """numpy.unique with return_inverse gives codes 0..K-1 for K distinct rows."""
-    notna = np.array([
-        [True, False],   # A
-        [False, True],   # B
-        [True, False],   # A
-        [False, False],  # C
-    ])
+    notna = np.array(
+        [
+            [True, False],  # A
+            [False, True],  # B
+            [True, False],  # A
+            [False, False],  # C
+        ]
+    )
     out = _row_fingerprints(notna)
     assert set(out.tolist()) == {0, 1, 2}
 
@@ -72,11 +78,14 @@ def test_handles_wide_array_more_than_64_columns():
 
 def test_handles_non_bool_input():
     """Should coerce a 0/1 int array to bool before packing."""
-    notna_int = np.array([
-        [1, 0, 1, 0],
-        [0, 1, 0, 1],
-        [1, 0, 1, 0],
-    ], dtype=np.int8)
+    notna_int = np.array(
+        [
+            [1, 0, 1, 0],
+            [0, 1, 0, 1],
+            [1, 0, 1, 0],
+        ],
+        dtype=np.int8,
+    )
     out = _row_fingerprints(notna_int)
     assert out[0] == out[2]
     assert out[0] != out[1]
@@ -97,6 +106,7 @@ def test_scales_to_large_input_quickly():
     ~60 s on this size; the vectorized path should complete in well under
     a few seconds."""
     import time
+
     rng = np.random.default_rng(seed=0)
     notna = rng.random((400_000, 165)) > 0.7
     t0 = time.perf_counter()
