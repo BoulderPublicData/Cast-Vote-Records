@@ -76,9 +76,10 @@ def _write_metadata(verbose: bool) -> None:
         "title: Boulder County Cast Vote Records",
         "description_html: |",
         "  <p>Redacted ballot-level Cast Vote Records published by the Boulder County",
-        "  Clerk and Recorder, 2019&ndash;2025. Each table holds the City of",
-        "  Boulder-eligible ballots from one election; the <code>provenance</code>",
-        "  table carries source URLs and SHA-256 hashes for the underlying xlsx files.</p>",
+        "  Clerk and Recorder, 2019&ndash;2025. Each table holds every voter in the",
+        "  county (countywide; one row per voter) for one election; the",
+        "  <code>provenance</code> table carries source URLs and SHA-256 hashes for",
+        "  the underlying xlsx files.</p>",
         "license: CC-BY-4.0",
         "license_url: https://creativecommons.org/licenses/by/4.0/",
         "source: Boulder County Clerk and Recorder",
@@ -88,8 +89,6 @@ def _write_metadata(verbose: bool) -> None:
         "    tables:",
     ]
     for src in SOURCES:
-        if src.election_key == "2024-Primary":
-            continue
         table_name = src.election_key.replace("-", "_").lower()
         lines.append(f"      {table_name}:")
         lines.append(

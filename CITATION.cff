@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: >-
+  If you use this dataset, please cite it as below, including the version or
+  the commit hash you used. The underlying records are public releases of the
+  Boulder County Clerk and Recorder.
+type: dataset
+title: "Boulder County Cast Vote Records, 2019–2025"
+abstract: >-
+  Ballot-level Cast Vote Records for Boulder County, Colorado (general and
+  coordinated elections 2019–2025 plus the 2024 June Primary), converted from
+  the County's Dominion XLSX exports into documented per-voter CSVs, with a
+  reproducible pipeline, SHA-256 provenance and an independent reconciliation
+  against the official Statement of Votes.
+authors:
+  - family-names: Keegan
+    given-names: Brian C.
+    website: "http://www.brianckeegan.com"
+version: 0.3.0
+date-released: "2026-10-26"
+repository-code: "https://github.com/BoulderPublicData/Cast-Vote-Records"
+url: "https://github.com/BoulderPublicData/Cast-Vote-Records"
+license: CC-BY-4.0
+keywords:
+  - cast vote records
+  - elections
+  - Boulder County
+  - Colorado
+  - risk-limiting audit
+  - ranked-choice voting
+references:
+  - type: data
+    title: "Boulder County Elections: Past Election Results"
+    authors:
+      - name: "Boulder County Clerk and Recorder"
+    url: "https://bouldercounty.gov/elections/by-year/"

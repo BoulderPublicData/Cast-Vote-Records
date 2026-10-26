@@ -39,6 +39,19 @@ Format: ``<contest name>::<choice name>``.
 
 Cells are written as integers (`1`/`0`, nullable `Int8` in pandas), never `1.0`/`0.0`. Any other value fails `scripts.schema.validate_contest_columns`.
 
-**Nuance.** What the CSV stores as `1` is `HasIndication`, not `IsAllocable` (whether the mark counts under contest rules). The Dominion interpreted-snapshot collapses both, so overvotes are encoded as `1`. Analyses sensitive to invalidated marks need either the *original* or the *modified* (post-adjudication) snapshot, neither of which Boulder publishes in the redacted archive.
+**Nuance.** What the CSV stores as `1` is `HasIndication` after the voting system's contest rules, not the raw mark. No contest in any of the eight files has more marks than its "Vote For" limit, so an overvoted contest appears to be exported as all `0`s and cannot be told apart from an undervote. Analyses sensitive to invalidated marks need either the *original* or the *modified* (post-adjudication) snapshot, neither of which Boulder publishes in the redacted archive.
 
 The `NaN`-vs-`0` distinction matters for undervote analysis: an *undervote* is `0` (eligible, left blank), vs. *not eligible* (`NaN`). The clustering pipeline collapses `NaN → 0` for embedding; analyses where the distinction matters should preserve it from the wide CSV.
+
+## Derived files (cluster analysis)
+
+Written by [`clusters.ipynb`](../clusters.ipynb) for every election with City of Boulder contests (not the 2024 Primary). Redacted ballots are left out. Rerun the notebook top to bottom to regenerate them; [`cluster-provenance.csv`](../data/processed/cluster-provenance.csv) records the input hash for each.
+
+| File | One row per | Columns |
+| --- | --- | --- |
+| `data/processed/<election>-ballots-with-clusters.csv` | City of Boulder voter | every column of the per-voter CSV that is non-blank for City voters, plus `cluster` (HDBSCAN label; `-1` = noise, i.e. in no cluster), `umap_x`, `umap_y` (2-D plot coordinates; only meaningful within one election). Join to the per-voter CSV on `_ID/voter_id`. |
+| `data/processed/<election>-cluster-profiles.csv` | cluster (including `-1`) | `cluster`, `n_ballots` (number of voters in the cluster; the name predates the per-voter output), then for each contest-choice the share of the cluster's voters *with that contest on their ballot* who marked it (0–1, 3 decimals). |
+| `data/processed/city-of-boulder-cluster-smallmultiples.png` | (figure) | one panel per election; alt text and caption in the [README](../README.md#derived-files-cluster-analysis). |
+| `data/processed/cluster-provenance.csv` | derived file | `output_path`, `election_key`, `input_path`, `input_sha256`, `output_sha256`, `n_rows`, `n_input_voters`, `min_cluster_size`, `n_clusters`, `n_noise`, `seed`, `umap_params`, `hdbscan_min_samples`, `python`, `packages` (JSON of versions), `generated_at`. |
+
+Cluster ids are arbitrary labels from one run, not ranks. With the fixed seed they are stable across reruns on the same inputs and package versions, but not across elections.

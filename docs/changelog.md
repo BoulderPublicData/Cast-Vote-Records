@@ -61,14 +61,14 @@ See `methodology.md` § Multi-sheet merge for the merging rules. The new bookkee
 ## 2024 Primary
 
 * Source: [2024-Boulder-County-June-Primary-Election-CVR.xlsx](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx).
-* Partisan state primary; no City of Boulder municipal contests; emits zero rows.
+* Partisan state primary with no City of Boulder municipal contests. The countywide per-voter CSV keeps every ballot (65,787 voters × 30 contest columns); City-level analyses such as `clusters.ipynb` skip it.
 * Redaction: 1,012 `Redacted` single ballots are kept (Joe Neguse's DEM marks rise from 50,738 to 51,310); 3 `Redacted and Consolidated` aggregates (about 157 more Neguse marks) are dropped.
 
 ## 2023 Coordinated
 
 * Source: [Redacted-2023Coordinated-CVR.xlsx](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx).
 * First publicly posted Boulder County CVR.
-* Includes Boulder's first ranked-choice mayoral election: four candidates × four rounds = sixteen columns named `Aaron Brockett(1)`, etc.
+* Includes Boulder's first ranked-choice mayoral election: four candidates × four ranks = sixteen columns named `Aaron Brockett(1)`, etc. The `(N)` suffix is the rank the voter gave that candidate, not an RCV tabulation round.
 * Privacy redaction switched to sentinel strings in `CvrNumber`: 18 `Redacted & Aggregated` aggregate rows (dropped) and 100 `RCV Redacted & Randomly Sorted` rows (kept as redacted ballots). Each RCV row holds one voter's mayoral ranking only; the rest of those ballots is inside the aggregates.
 * Ballot styles still coded `DS-NN`. No `CountingGroup`.
 
