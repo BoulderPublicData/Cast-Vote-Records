@@ -26,7 +26,6 @@ except ImportError:
 
 from .config import PROCESSED_DIR, PROVENANCE_CSV, ensure_dirs
 
-
 DB_PATH = PROCESSED_DIR / "cast_vote_records.db"
 METADATA_PATH = PROCESSED_DIR / "metadata.yaml"
 

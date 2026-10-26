@@ -5,8 +5,10 @@ from __future__ import annotations
 import pandas as pd
 
 from scripts.loader import (
+    AGGREGATE_SENTINELS,
     ID_LABELS,
     REDACTED_VALUES,
+    SINGLE_BALLOT_SENTINELS,
     contest_columns,
     id_columns,
     load_raw_cvr,
@@ -25,8 +27,8 @@ def test_load_raw_cvr_rebuilds_multiindex(minimal_cvr_path):
         ("_ID", "ImprintedId"),
         ("_ID", "BallotType"),
     ]
-    # 21 rows: 12 city + 6 Longmont + 1 sentinel + 1 NaN-CvrNumber + 1 NaN-TabulatorNum
-    assert len(df) == 21
+    # 25 rows: 12 city + 6 Longmont + 3 single redacted + 4 aggregates
+    assert len(df) == 25
 
 
 def test_load_raw_cvr_contest_columns(minimal_cvr_path):
@@ -52,3 +54,11 @@ def test_id_labels_includes_all_known_variants():
 def test_redacted_values_contains_known_strings():
     assert "RCV Redacted & Randomly Sorted" in REDACTED_VALUES
     assert "Redacted & Aggregated" in REDACTED_VALUES
+    assert "Redacted" in REDACTED_VALUES
+
+
+def test_sentinel_sets_are_disjoint_and_classified_by_pattern():
+    from scripts.cleaner import AGGREGATE_LABEL_RE
+    assert not (SINGLE_BALLOT_SENTINELS & AGGREGATE_SENTINELS)
+    assert all(AGGREGATE_LABEL_RE.search(s) for s in AGGREGATE_SENTINELS)
+    assert not any(AGGREGATE_LABEL_RE.search(s) for s in SINGLE_BALLOT_SENTINELS)

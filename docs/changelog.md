@@ -2,6 +2,27 @@
 
 Per-vintage notes on the underlying CVR files and any pipeline changes required to handle them.
 
+## Pipeline change: keep redacted ballots, merge out-of-order sheets, typed output
+
+Three fixes that change published counts (issues #6, #7, #18):
+
+* **Single redacted ballots are kept.** Previously every row with a non-numeric `CvrNumber`/`TabulatorNum` was dropped as a "privacy aggregate". Many are individual ballots with their identifiers blanked. They are now kept and flagged `_ID/redacted = True`. Only rows that sum several ballots (label contains "Consolidated"/"Aggregated", or a cell > 1) are dropped. See `methodology.md` § Redaction.
+* **Back-first two-sheet ballots are merged.** A voter whose sheet 2 was scanned directly before sheet 1 used to become two one-sheet "voters". A second, complementary-sheet pass now merges them (233 voters in 2024 General, 330 in 2022 General).
+* **Types.** `_ID/BallotType` is always text with numeric codes zero-padded (`"04"`, `"10"`), and contest cells are written as `1`/`0` (nullable `Int8`) instead of `1.0`/`0.0`.
+
+| Election | voters before | voters after | redacted ballots kept | aggregate rows dropped | out-of-order merges |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2019 Coordinated | 115,056 | 115,056 | 0 | 12 | 0 |
+| 2020 General | 205,796 | 205,796 | 0 | 49 | 0 |
+| 2021 Coordinated | 108,363 | 108,363 | 0 | 18 | 0 |
+| 2022 General | 163,043 | 162,714 | 1 | 37 | 330 |
+| 2023 Coordinated | 118,669 | 118,769 | 100 | 18 | 0 |
+| 2024 Primary | 64,775 | 65,787 | 1,012 | 3 | 0 |
+| 2024 General | 193,238 | 193,005 | 0 | 60 | 233 |
+| 2025 Coordinated | 120,529 | 121,537 | 1,008 | 3 | 0 |
+
+`_summary.csv` replaces `n_redacted_dropped` with `n_aggregate_rows_dropped` and `n_redacted_kept`, and adds `n_redacted_in_multisheet_styles`, `n_out_of_order_merges`, `n_rare_fingerprint_sheets` and `n_rare_fingerprint_full_ballot`. `scripts.reconcile` now re-derives row counts and per-column mark totals from the originals with a second parser, so a regression like either of the first two fails the run.
+
 ## Pipeline change: per-voter (not per-sheet) outputs
 
 Originally, the pipeline emitted one row per ballot **sheet** — and Dominion CVRs really do export one row per sheet ([NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103)). For multi-sheet ballots (the 2024 General used a two-sheet ballot for nearly every style), this over-counted voters by the average sheet-count, roughly 2× for 2024G.
@@ -14,13 +35,15 @@ See `methodology.md` § Multi-sheet merge for the merging rules. The new bookkee
 
 * Source: [Redacted-CVR-PUBLIC.xlsx](https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx).
 * Dominion software version 5.17.17.1.
-* Ballot styles coded as zero-padded numeric strings.
+* Ballot styles coded as zero-padded numeric strings (stored by Excel as a mix of text and numbers; the cleaner normalizes them to text).
+* Redaction: 1,007 `Redacted` single ballots and 1 `NaN`-label single ballot (a lone Coal Creek Canyon Fire 7B vote with no `BallotType`) are kept; 3 `Redacted and Consolidated N Ballots` aggregates (48 ballots) are dropped.
 
 ## 2024 General (pre-recount)
 
 * Source: [2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx](https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx).
 * High-turnout presidential cycle; largest CVR by row count (**384,384 ballot sheets** county-wide).
-* **Two-sheet ballot for every BallotType** — the multi-sheet merger collapses this to **193,238 voters** (191,146 two-sheet voters + 2,092 single-sheet voters whose other sheet was not returned or rejected). Sheet 1 carries presidential + congressional + judicial retentions + state amendments; sheet 2 carries City of Boulder ballot questions (2C/2D/2E) + state propositions.
+* **Two-sheet ballot for every BallotType** — the multi-sheet merger collapses this to **193,005 voters** (191,379 two-sheet voters + 1,626 single-sheet voters whose other sheet was not returned or rejected). 233 of the two-sheet voters had sheet 2 scanned directly before sheet 1; before the complementary-sheet pass they were counted twice (193,238 voters).
+* All 60 redacted rows are aggregates (`Redacted and Aggregated - A cards` / `- B cards` / `- B cards or Property Owner Ballot`) and are dropped; no single redacted ballots. Sheet 1 carries presidential + congressional + judicial retentions + state amendments; sheet 2 carries City of Boulder ballot questions (2C/2D/2E) + state propositions.
 * Partisan presidential and congressional contests include a third header row with party abbreviations (`DEM`/`REP`/`APV`/`LBR`/`GRN`).
 * A post-recount CVR was published separately — would correspond to the NIST "modified" snapshot. Excluded by design.
 
@@ -28,22 +51,23 @@ See `methodology.md` § Multi-sheet merge for the merging rules. The new bookkee
 
 * Source: [2024-Boulder-County-June-Primary-Election-CVR.xlsx](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx).
 * Partisan state primary; no City of Boulder municipal contests; emits zero rows.
+* Redaction: 1,012 `Redacted` single ballots are kept (Joe Neguse's DEM marks rise from 50,738 to 51,310); 3 `Redacted and Consolidated` aggregates (about 157 more Neguse marks) are dropped.
 
 ## 2023 Coordinated
 
 * Source: [Redacted-2023Coordinated-CVR.xlsx](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx).
 * First publicly posted Boulder County CVR.
 * Includes Boulder's first ranked-choice mayoral election: four candidates × four rounds = sixteen columns named `Aaron Brockett(1)`, etc.
-* Privacy aggregation switched to sentinel strings in `CvrNumber`.
+* Privacy redaction switched to sentinel strings in `CvrNumber`: 18 `Redacted & Aggregated` aggregate rows (dropped) and 100 `RCV Redacted & Randomly Sorted` rows (kept as redacted ballots). Each RCV row holds one voter's mayoral ranking only; the rest of those ballots is inside the aggregates.
 * Ballot styles still coded `DS-NN`. No `CountingGroup`.
 
 ## 2022 General (CORA)
 
 * Obtained via Colorado Open Records Act disclosure.
-* Largest pre-2024 CVR by row count (**320,542 county-wide sheets**) — but the **two-sheet ballot** halves that to **163,043 voters** (157,499 two-sheet + 5,544 single-sheet).
-* Privacy-aggregated rows carry `NaN` in `CvrNumber` (one row per ballot style).
+* Largest pre-2024 CVR by row count (**320,580 rows**; 320,543 sheets after dropping aggregates) — but the **two-sheet ballot** halves that to **162,714 voters** (157,829 two-sheet + 4,885 single-sheet). 330 voters had their sheets scanned back page first and were previously counted twice (163,043 voters).
+* Privacy-aggregated rows carry `NaN` in `CvrNumber` (one row per ballot style; 37 dropped). One `NaN`-label row (DS-38) sums to at most 1 everywhere, so it is kept as a single redacted ballot, but it fills every county contest with 0 like an aggregate does.
 * **Initial pipeline bug**: without the NaN-CvrNumber redaction rule, those aggregate rows were each detected as "voting on a City of Boulder contest" and flipped 37 ballot styles into the "city" set — producing a falsely inflated city-ballot count of 320k. Fixed with the NaN-redaction rule plus a `min_ballots=5` threshold on city detection.
-* The 2022 cleaner also logs 18 warnings for BallotTypes with a rare third contest-fill fingerprint (~3,300 sheets total across the county). These are treated as single-sheet voters per the convention; investigation suggests they are partial rescans or scanner anomalies.
+* The 2022 cleaner also logs 18 warnings for BallotTypes with a rare third contest-fill fingerprint (3,319 sheets total, mostly from tabulators 101 and 108). Every one fills exactly the union of its style's two sheets, i.e. a whole ballot recorded on one row (likely duplicated or remade ballots), so treating each as a one-sheet voter is correct; they are not halves of split voters. `_summary.csv` reports them as `n_rare_fingerprint_sheets` / `n_rare_fingerprint_full_ballot`.
 
 ## 2021 Coordinated (CORA)
 

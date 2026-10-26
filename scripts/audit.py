@@ -1,6 +1,6 @@
 """Auto-generated audit report — summary stats per processed CSV.
 
-Reads every ``data/processed/<election>-city-of-boulder-wide.csv``, computes
+Reads every ``data/processed/<election>-county-wide-by-voter.csv``, computes
 basic shape / dtype / null / cardinality stats, and writes a Markdown
 report to ``data/audit/summary-<YYYYMMDD-HHMMSS>.md`` plus a stable
 ``data/audit/summary.md`` (the latest report).
@@ -78,9 +78,10 @@ def write_audit(verbose: bool = True) -> Path:
     lines.append("")
 
     if SUMMARY_CSV.exists():
+        s = pd.read_csv(SUMMARY_CSV).set_index("election_key")
+        lines.extend(_redaction_section(s))
         lines.append("## Pipeline bookkeeping (`data/processed/_summary.csv`)")
         lines.append("")
-        s = pd.read_csv(SUMMARY_CSV).set_index("election_key")
         lines.append(s.to_markdown())
         lines.append("")
 
@@ -112,6 +113,39 @@ def write_audit(verbose: bool = True) -> Path:
     return out_path
 
 
+def _redaction_section(s: pd.DataFrame) -> list[str]:
+    """Kept-redacted vs dropped-aggregate counts, plus merge diagnostics."""
+    cols = {
+        "n_raw_rows": "raw rows",
+        "n_aggregate_rows_dropped": "aggregate rows dropped",
+        "n_redacted_kept": "redacted ballots kept",
+        "n_redacted_in_multisheet_styles": "…of which in multi-sheet styles (unmerged)",
+        "n_out_of_order_merges": "out-of-order sheet merges",
+        "n_rare_fingerprint_sheets": "rare-fingerprint sheets",
+        "n_rare_fingerprint_full_ballot": "…of which a whole ballot on one row",
+        "n_voters": "voters",
+    }
+    present = [c for c in cols if c in s.columns]
+    if "n_redacted_kept" not in present:
+        return []
+    lines = [
+        "## Redaction and merge diagnostics",
+        "",
+        (
+            "Single-ballot redacted rows (identifiers blanked by the County, marks "
+            "intact) are kept with `_ID/redacted = True`; aggregate rows that sum "
+            "several ballots are dropped. See `docs/methodology.md` § Redaction."
+        ),
+        "",
+        "| Election | " + " | ".join(cols[c] for c in present) + " |",
+        "| --- | " + " | ".join("---:" for _ in present) + " |",
+    ]
+    for key, row in s.iterrows():
+        lines.append(f"| {key} | " + " | ".join(f"{int(row[c]):,}" for c in present) + " |")
+    lines.append("")
+    return lines
+
+
 def _write_variables_report(rows: list[dict], verbose: bool) -> None:
     """Per-column profile across every processed CSV.
 
@@ -138,9 +172,11 @@ def _write_variables_report(rows: list[dict], verbose: bool) -> None:
 
     lines = [
         "# Variables (auto-generated)\n",
-        "Mechanical profile of every column in every processed CSV. "
-        "Sampled on the first 5,000 rows per file. The hand-maintained "
-        "documentation lives in `docs/data-dictionary.md`.\n",
+        (
+            "Mechanical profile of every column in every processed CSV. "
+            "Sampled on the first 5,000 rows per file. The hand-maintained "
+            "documentation lives in `docs/data-dictionary.md`.\n"
+        ),
         "| election_key | column | kind | dtype | n_distinct | null % |",
         "| --- | --- | --- | --- | ---: | ---: |",
     ]
