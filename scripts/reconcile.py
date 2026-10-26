@@ -45,8 +45,14 @@ from .fetch import LfsPointerError, check_lfs_pointers
 from .sources import SOURCES
 
 _ID_LABELS = {
-    "CvrNumber", "TabulatorNum", "BatchId", "RecordId", "ImprintedId",
-    "CountingGroup", "PrecinctPortion", "BallotType",
+    "CvrNumber",
+    "TabulatorNum",
+    "BatchId",
+    "RecordId",
+    "ImprintedId",
+    "CountingGroup",
+    "PrecinctPortion",
+    "BallotType",
 }
 _AGGREGATE_RE = re.compile(r"consolidat|aggregat", re.IGNORECASE)
 
@@ -74,15 +80,19 @@ def independent_counts(path: Path) -> dict:
     raw = _read_original(path)
     labels = raw.iloc[3]
     body = raw.iloc[4:].reset_index(drop=True)
-    id_pos = {str(labels.iloc[i]): i for i in range(raw.shape[1])
-              if isinstance(labels.iloc[i], str) and labels.iloc[i] in _ID_LABELS}
+    id_pos = {
+        str(labels.iloc[i]): i
+        for i in range(raw.shape[1])
+        if isinstance(labels.iloc[i], str) and labels.iloc[i] in _ID_LABELS
+    }
     contest_pos = [i for i in range(raw.shape[1]) if i not in id_pos.values()]
     names = [f"{_fix(raw.iloc[1, i])}::{_fix(raw.iloc[2, i])}" for i in contest_pos]
 
     cvr = body.iloc[:, id_pos["CvrNumber"]]
     tab = body.iloc[:, id_pos["TabulatorNum"]]
-    redacted = (pd.to_numeric(cvr, errors="coerce").isna()
-                | pd.to_numeric(tab, errors="coerce").isna())
+    redacted = (
+        pd.to_numeric(cvr, errors="coerce").isna() | pd.to_numeric(tab, errors="coerce").isna()
+    )
     values = body.iloc[:, contest_pos].apply(pd.to_numeric, errors="coerce")
     by_label = cvr.astype("string").str.contains(_AGGREGATE_RE, na=False)
     by_value = (values > 1).any(axis=1)
@@ -183,14 +193,16 @@ def sov_crosscheck(src, indep: dict, sov_dir: Path) -> pd.DataFrame | None:
         key = f"{_norm(contest)}::{_norm(choice)}"
         if key not in official.index:
             continue
-        rows.append({
-            "election_key": src.election_key,
-            "contest": contest,
-            "choice": choice,
-            "cvr_marks": marks,
-            "aggregate_marks": indep["aggregate_marks"][name],
-            "sov_votes": float(official[key]),
-        })
+        rows.append(
+            {
+                "election_key": src.election_key,
+                "contest": contest,
+                "choice": choice,
+                "cvr_marks": marks,
+                "aggregate_marks": indep["aggregate_marks"][name],
+                "sov_votes": float(official[key]),
+            }
+        )
     if not rows:
         return None
     out = pd.DataFrame(rows)
@@ -202,13 +214,14 @@ def sov_crosscheck(src, indep: dict, sov_dir: Path) -> pd.DataFrame | None:
 # Driver
 # ---------------------------------------------------------------------------
 
+
 def _load_summary() -> pd.DataFrame:
     summary_csv = config.SUMMARY_CSV
     if not summary_csv.exists():
-        raise SystemExit(
-            f"{summary_csv} not found; run `python -m scripts.clean` first"
-        )
-    return pd.read_csv(summary_csv, dtype={"multi_sheet_ballot_types": str}).set_index("election_key")
+        raise SystemExit(f"{summary_csv} not found; run `python -m scripts.clean` first")
+    return pd.read_csv(summary_csv, dtype={"multi_sheet_ballot_types": str}).set_index(
+        "election_key"
+    )
 
 
 def reconcile(verbose: bool = True, *, sov_dir: Path | None = None) -> dict:
@@ -232,8 +245,9 @@ def reconcile(verbose: bool = True, *, sov_dir: Path | None = None) -> dict:
         if verbose:
             print(f"  reconciling {src.election_key}...", flush=True)
         indep = independent_counts(orig)
-        srow = (summary.loc[src.election_key].to_dict()
-                if src.election_key in summary.index else None)
+        srow = (
+            summary.loc[src.election_key].to_dict() if src.election_key in summary.index else None
+        )
 
         problems: list[str] = []
         if srow is None:
@@ -255,16 +269,18 @@ def reconcile(verbose: bool = True, *, sov_dir: Path | None = None) -> dict:
 
         status = "ok" if not problems else "MISMATCH"
         has_regression |= bool(problems)
-        rows.append({
-            **base,
-            "status":            status,
-            "raw_rows":          indep["n_raw"],
-            "aggregate_rows":    indep["n_aggregate"],
-            "sheets_kept":       indep["n_kept"],
-            "voters":            None if srow is None else int(srow["n_voters"]),
-            **checked,
-            "problems":          problems,
-        })
+        rows.append(
+            {
+                **base,
+                "status": status,
+                "raw_rows": indep["n_raw"],
+                "aggregate_rows": indep["n_aggregate"],
+                "sheets_kept": indep["n_kept"],
+                "voters": None if srow is None else int(srow["n_voters"]),
+                **checked,
+                "problems": problems,
+            }
+        )
         if sov_dir is not None:
             frame = sov_crosscheck(src, indep, sov_dir)
             if frame is not None:
@@ -278,7 +294,9 @@ def reconcile(verbose: bool = True, *, sov_dir: Path | None = None) -> dict:
         pd.concat(sov_frames).to_csv(sov_csv, index=False)
     elif sov_csv.exists():
         sov_csv.unlink()  # don't leave a stale cross-check beside a new report
-    (config.AUDIT_DIR / "reconcile.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
+    (config.AUDIT_DIR / "reconcile.json").write_text(
+        json.dumps(report, indent=2, default=str) + "\n"
+    )
     (config.AUDIT_DIR / "reconcile.md").write_text(_render_md(rows, sov_summary))
     if verbose:
         print(f"  wrote {config.AUDIT_DIR / 'reconcile.md'}")
@@ -295,12 +313,14 @@ def reconcile(verbose: bool = True, *, sov_dir: Path | None = None) -> dict:
 def _summarize_sov(frames: list[pd.DataFrame]) -> pd.DataFrame:
     df = pd.concat(frames)
     g = df.groupby("election_key", sort=False)
-    out = pd.DataFrame({
-        "choices_matched": g.size(),
-        "cvr_marks": g["cvr_marks"].sum(),
-        "aggregate_marks": g["aggregate_marks"].sum(),
-        "sov_votes": g["sov_votes"].sum(),
-    })
+    out = pd.DataFrame(
+        {
+            "choices_matched": g.size(),
+            "cvr_marks": g["cvr_marks"].sum(),
+            "aggregate_marks": g["aggregate_marks"].sum(),
+            "sov_votes": g["sov_votes"].sum(),
+        }
+    )
     out["cvr_share_of_sov"] = out["cvr_marks"] / out["sov_votes"]
     out["with_aggregates_share"] = (out["cvr_marks"] + out["aggregate_marks"]) / out["sov_votes"]
     out["max_abs_delta"] = g["delta"].apply(lambda s: s.abs().max())
@@ -379,12 +399,20 @@ def _render_md(rows: list[dict], sov: pd.DataFrame | None) -> str:
 
 
 def _main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="scripts.reconcile", description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        prog="scripts.reconcile",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     p.add_argument("--quiet", "-q", action="store_true")
-    p.add_argument("--sov", type=Path, default=None, metavar="DIR",
-                   help="Election-Results data/processed/statements-of-votes/ "
-                        "folder for an informational per-contest cross-check")
+    p.add_argument(
+        "--sov",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="Election-Results data/processed/statements-of-votes/ "
+        "folder for an informational per-contest cross-check",
+    )
     a = p.parse_args(argv)
     reconcile(verbose=not a.quiet, sov_dir=a.sov)
     return 0

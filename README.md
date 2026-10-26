@@ -95,8 +95,12 @@ Boulder County publishes its CVRs because Colorado statute requires risk-limitin
 
 ```python
 import pandas as pd
-df = pd.read_csv("data/processed/cast-vote-records/2023-coordinated-county-wide-by-voter.csv",
-                 dtype={"_ID/BallotType": str}, low_memory=False)
+
+df = pd.read_csv(
+    "data/processed/cast-vote-records/2023-coordinated-county-wide-by-voter.csv",
+    dtype={"_ID/BallotType": str},
+    low_memory=False,
+)
 # Filter to City of Boulder voters: any contest column that names the city is non-blank
 city_cols = [c for c in df.columns if "City of Boulder" in c]
 city = df[df[city_cols].notna().any(axis=1)]

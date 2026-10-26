@@ -22,6 +22,7 @@ The pragmatic choice: avoid a Source ABC layer (a single source doesn't warrant 
 git lfs pull                          # the originals and processed CSVs are LFS objects
 uv sync --all-extras                  # core + analysis + publish extras + dev group (pytest, ruff)
 uv run ruff check .
+uv run ruff format --check .           # CI enforces formatting; `ruff format .` fixes it
 uv run pytest                         # a few seconds; synthetic fixtures only
 uv run python -m scripts.pipeline     # fetch (verify hashes) → clean → audit
 uv run python -m scripts.pipeline reconcile [--sov ../Election-Results/data/processed/statements-of-votes]
@@ -29,6 +30,33 @@ uv run jupyter nbconvert --to notebook --execute --inplace clusters.ipynb
 ```
 
 The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clean|audit|reconcile|publish|list}`. Shared options (`-q`, `-e/--election 2024-general`, `--year 2024`, `--force`, `--fail-on-empty`, `--update-manifest`) work before or after the subcommand; one the subcommand doesn't use is an error.
+
+## Checks by change type
+
+Run the cheapest check that can catch a mistake in what you changed, and say in the PR which one you ran. A full notebook run proves nothing about a docs edit and costs half an hour; skipping `reconcile` after a cleaner change can ship wrong counts.
+
+| Change touches | Run | Time |
+|---|---|---|
+| docs, comments, recipes, CI config | `ruff check .`, `ruff format --check .`, `pytest` | < 1 min |
+| `scripts/` other than the loader, cleaner and sources | + `pipeline reconcile` | ~3 min |
+| `loader.py`, `cleaner.py`, `sources.py`, `data/original/` | + full `pipeline` (or `clean -e <key>` while iterating, ~15 s–3 min per election), then `reconcile --sov …` | ~15 min |
+| paths, keys or file names only (renames) | + the notebook's load and write cells on the new paths (smoke test) | ~2 min |
+| cluster inputs, `clusters.ipynb` logic, UMAP/HDBSCAN parameters | + one full `nbconvert --execute`; a second run only to prove reproducibility after changing seeds or parameters | 20–30 min |
+
+The per-voter CSVs should come out byte-identical whenever a change isn't meant to move counts; compare hashes before and after rather than re-reading the data.
+
+## Long runs
+
+The full pipeline (~15 min) and `clusters.ipynb` (20–30 min) rewrite tracked files as they go. If a commit-on-stop hook or file watcher is active, don't run them inside the working tree. Run them against a copy and commit once at the end, so a half-finished `data/` is never committed and new facts arriving mid-run don't force a restart:
+
+```bash
+mkdir -p /tmp/cvr && cp -r data /tmp/cvr/
+CVR_DATA_DIR=/tmp/cvr/data uv run python -m scripts.pipeline
+CVR_DATA_DIR=/tmp/cvr/data uv run jupyter nbconvert --to notebook --execute --inplace clusters.ipynb
+cp -r /tmp/cvr/data/. data/ && git add data && git commit
+```
+
+`CVR_DATA_DIR` moves every path in `scripts/config.py`, and the notebook reads it too. Provenance still records `data/...` paths. Run `git lfs pull` first: a checkout made with LFS smudging off leaves pointer files, and the copy inherits them.
 
 ## Layout
 
@@ -99,6 +127,7 @@ The County protects ballot secrecy in two ways, and the cleaner treats them diff
 * **Empirical sheet-order wins over heuristics.** Within each BallotType, sheet 1 is whichever fingerprint appears first by RecordId in `(Tab, Batch)` groups (trusting the scanner). The contest-count heuristic (more non-null columns = sheet 1) is a sanity check; disagreement logs a warning rather than overriding.
 * **Per-extract provenance, not per-row.** `data/processed/cast-vote-records/provenance.csv` keyed on `election_key`; `data/processed/clusters/provenance.csv` keyed on output file.
 * **One key format across repos.** `election_key` is `{year}-{type}` in lowercase, exactly as in BoulderPublicData/Election-Results (`2024-general`), so the two datasets join without a crosswalk; `reconcile --sov` relies on it.
+* **Reconcile at the published grain, with a second reader.** `reconcile` re-reads every original with calamine (the loader uses openpyxl) and re-applies the redaction rule from scratch. It then checks the totals of every contest-choice column against the raw file, and exits non-zero on any mismatch. Before 2026-10 it could not fail: a processed CSV truncated to its header still passed (#8). A new output column or table needs a matching reconcile check before it ships.
 * **Immutable originals.** Files in `data/original/` are write-only from `scripts.fetch`. Re-running the cleaner does not touch them.
 * **Errors durable, not fatal.** The CLI's `--fail-on-empty` flag turns silent regressions loud.
 

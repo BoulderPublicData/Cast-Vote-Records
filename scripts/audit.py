@@ -31,12 +31,12 @@ def _list_processed() -> list[Path]:
 def _summarize_one(path: Path) -> dict:
     df = pd.read_csv(path, low_memory=False)
     return {
-        "path":         path,
-        "n_ballots":    len(df),
-        "n_id_cols":    len(id_columns(df)),
+        "path": path,
+        "n_ballots": len(df),
+        "n_id_cols": len(id_columns(df)),
         "n_contest_cols": len(contest_columns(df)),
-        "memory_mb":    df.memory_usage(index=False, deep=True).sum() / 1e6,
-        "null_pct":     float(df.isna().mean().mean() * 100),
+        "memory_mb": df.memory_usage(index=False, deep=True).sum() / 1e6,
+        "null_pct": float(df.isna().mean().mean() * 100),
     }
 
 
@@ -89,6 +89,7 @@ def write_audit(verbose: bool = True) -> Path:
     lines.append("## Files in `data/original/`")
     lines.append("")
     from .fetch import load_manifest
+
     manifest = load_manifest()
     if manifest:
         lines.append(
@@ -99,7 +100,7 @@ def write_audit(verbose: bool = True) -> Path:
         for fname, info in sorted(manifest.items()):
             lines.append(
                 f"| `{fname}` | `{info['sha256'][:12]}` | "
-                f"{info['size']/1e6:.1f} | {info.get('retrieved_at', '')} | "
+                f"{info['size'] / 1e6:.1f} | {info.get('retrieved_at', '')} | "
                 f"{info.get('source_last_modified', '')} | "
                 f"{info.get('obtained_at', '')} | {info.get('first_committed_at', '')} | "
                 f"{info.get('xlsx_modified', '')} |"
@@ -164,14 +165,16 @@ def _write_variables_report(rows: list[dict], verbose: bool) -> None:
         df = pd.read_csv(r["path"], low_memory=False, nrows=5000)
         for col in df.columns:
             kind = "id" if col.startswith("_ID/") else "contest"
-            records.append({
-                "election_key": r["key"],
-                "column":       col,
-                "kind":         kind,
-                "dtype":        str(df[col].dtype),
-                "n_distinct":   int(df[col].nunique(dropna=True)),
-                "null_pct":     float(df[col].isna().mean() * 100),
-            })
+            records.append(
+                {
+                    "election_key": r["key"],
+                    "column": col,
+                    "kind": kind,
+                    "dtype": str(df[col].dtype),
+                    "n_distinct": int(df[col].nunique(dropna=True)),
+                    "null_pct": float(df[col].isna().mean() * 100),
+                }
+            )
     if not records:
         return
     variables = pd.DataFrame(records)
@@ -194,7 +197,7 @@ def _write_variables_report(rows: list[dict], verbose: bool) -> None:
         )
     (DOCS_DIR / "variables.md").write_text("\n".join(lines) + "\n")
     if verbose:
-        print(f"  wrote {DOCS_DIR/'variables.md'} ({len(records)} rows)")
+        print(f"  wrote {DOCS_DIR / 'variables.md'} ({len(records)} rows)")
 
 
 def _main(argv: list[str] | None = None) -> int:

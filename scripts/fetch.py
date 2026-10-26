@@ -110,9 +110,7 @@ def load_manifest() -> dict[str, dict]:
 
 def write_manifest(manifest: dict[str, dict]) -> None:
     """Write ``manifest`` to ``data/original/manifest.json`` (sorted keys)."""
-    config.ORIGINAL_MANIFEST.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n"
-    )
+    config.ORIGINAL_MANIFEST.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
 
 def _now() -> str:
@@ -121,7 +119,8 @@ def _now() -> str:
 
 def _original_files() -> list[Path]:
     return [
-        p for p in sorted(config.ORIGINAL_DIR.glob("**/*"))
+        p
+        for p in sorted(config.ORIGINAL_DIR.glob("**/*"))
         if p.is_file() and p.name != "manifest.json" and not p.name.startswith(".")
     ]
 
@@ -163,8 +162,7 @@ def verify_manifest(
         entry = new.get(rel)
         if entry is not None and entry.get("sha256") != digest and not update:
             problems.append(
-                f"{rel}: sha256 {digest[:12]} on disk != manifest "
-                f"{str(entry.get('sha256'))[:12]}"
+                f"{rel}: sha256 {digest[:12]} on disk != manifest {str(entry.get('sha256'))[:12]}"
             )
             continue
         entry = dict(entry or {})
@@ -207,7 +205,7 @@ def download_one(src, *, force: bool = False) -> dict[str, str] | None:
     r = requests.get(src.public_url, timeout=120)
     r.raise_for_status()
     dest.write_bytes(r.content)
-    print(f"  saved {dest} ({dest.stat().st_size/1e6:.1f} MB)", flush=True)
+    print(f"  saved {dest} ({dest.stat().st_size / 1e6:.1f} MB)", flush=True)
     return {
         "retrieved_at": _now(),
         "source_last_modified": _http_date_to_iso(r.headers.get("Last-Modified", "")),
@@ -222,7 +220,10 @@ def _http_date_to_iso(value: str) -> str:
 
 
 def fetch(
-    *, force: bool = False, update_manifest: bool = False, verbose: bool = True,
+    *,
+    force: bool = False,
+    update_manifest: bool = False,
+    verbose: bool = True,
 ) -> dict[str, dict]:
     """Download missing public CVRs, then verify every file against the
     manifest and write it back.
@@ -246,14 +247,19 @@ def fetch(
             downloaded[src.filename] = fields
 
     manifest, problems = verify_manifest(
-        load_manifest(), downloaded=downloaded, update=update_manifest,
+        load_manifest(),
+        downloaded=downloaded,
+        update=update_manifest,
     )
     if problems:
         print("FAIL: data/original/ does not match manifest.json:", file=sys.stderr)
         for p in problems:
             print(f"  - {p}", file=sys.stderr)
-        print("Re-run `git lfs pull`, or pass --update-manifest to accept a "
-              "deliberate upstream change.", file=sys.stderr)
+        print(
+            "Re-run `git lfs pull`, or pass --update-manifest to accept a "
+            "deliberate upstream change.",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
     write_manifest(manifest)
     if verbose:
@@ -265,12 +271,15 @@ def fetch(
 
 
 def _main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="scripts.fetch", description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--force", action="store_true",
-                   help="re-download files even when present")
-    p.add_argument("--update-manifest", action="store_true",
-                   help="accept hash changes instead of failing")
+    p = argparse.ArgumentParser(
+        prog="scripts.fetch",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("--force", action="store_true", help="re-download files even when present")
+    p.add_argument(
+        "--update-manifest", action="store_true", help="accept hash changes instead of failing"
+    )
     p.add_argument("--quiet", "-q", action="store_true")
     a = p.parse_args(argv)
     fetch(force=a.force, update_manifest=a.update_manifest, verbose=not a.quiet)

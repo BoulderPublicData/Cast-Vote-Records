@@ -53,6 +53,7 @@ def test_election_keys_follow_the_shared_format():
     """`{year}-{type}`, lowercase, type from the vocabulary shared with
     Election-Results (#23)."""
     from scripts.sources import ELECTION_TYPES
+
     for src in SOURCES:
         assert src.election_type in ELECTION_TYPES, src
         assert src.election_key == f"{src.year}-{src.election_type}", src
@@ -65,4 +66,5 @@ def test_old_style_key_gets_a_hint():
 
 def test_sources_for_years():
     from scripts.sources import sources_for_years
+
     assert [s.election_key for s in sources_for_years([2024])] == ["2024-primary", "2024-general"]

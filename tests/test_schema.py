@@ -16,26 +16,36 @@ from scripts.schema import (
 
 
 def _make_valid_df() -> pd.DataFrame:
-    return pd.DataFrame({
-        "_ID/CvrNumber":    ["1", "2", "3"],
-        "_ID/TabulatorNum": ["100", "100", "100"],
-        "_ID/BatchId":      ["1", "1", "1"],
-        "_ID/RecordId":     ["1", "2", "3"],
-        "_ID/ImprintedId":  ["100-1-1", "100-1-2", "100-1-3"],
-        "_ID/BallotType":   ["DS-01", "DS-01", "DS-01"],
-        "_ID/n_sheets":     [1, 2, 1],
-        "_ID/voter_id":     ["100-1-1", "100-1-2", "100-1-3"],
-        "_ID/redacted":     [False, False, False],
-        "Contest A::Alice": [1, 0, 0],
-        "Contest A::Bob":   [0, 1, 0],
-        "Contest A::Carol": [0, 0, 1],
-    })
+    return pd.DataFrame(
+        {
+            "_ID/CvrNumber": ["1", "2", "3"],
+            "_ID/TabulatorNum": ["100", "100", "100"],
+            "_ID/BatchId": ["1", "1", "1"],
+            "_ID/RecordId": ["1", "2", "3"],
+            "_ID/ImprintedId": ["100-1-1", "100-1-2", "100-1-3"],
+            "_ID/BallotType": ["DS-01", "DS-01", "DS-01"],
+            "_ID/n_sheets": [1, 2, 1],
+            "_ID/voter_id": ["100-1-1", "100-1-2", "100-1-3"],
+            "_ID/redacted": [False, False, False],
+            "Contest A::Alice": [1, 0, 0],
+            "Contest A::Bob": [0, 1, 0],
+            "Contest A::Carol": [0, 0, 1],
+        }
+    )
 
 
 def test_required_id_columns_present():
-    for label in ("CvrNumber", "TabulatorNum", "BatchId", "RecordId",
-                  "ImprintedId", "BallotType", "n_sheets", "voter_id",
-                  "redacted"):
+    for label in (
+        "CvrNumber",
+        "TabulatorNum",
+        "BatchId",
+        "RecordId",
+        "ImprintedId",
+        "BallotType",
+        "n_sheets",
+        "voter_id",
+        "redacted",
+    ):
         assert f"_ID/{label}" in REQUIRED_ID_COLUMNS
 
 

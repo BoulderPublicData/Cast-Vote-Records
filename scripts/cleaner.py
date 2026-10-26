@@ -112,6 +112,7 @@ class MergeStats:
 # Phase 0: normalize ID values and validate contest cells
 # ---------------------------------------------------------------------------
 
+
 def _col(df: pd.DataFrame, key: tuple) -> pd.Series:
     """Return ``df[key]`` as a Series even if the label is duplicated."""
     s = df[key]
@@ -129,6 +130,7 @@ def normalize_ballot_type(values: pd.Series) -> pd.Series:
     Normalizing makes ``"04"``, ``"4"``, ``4`` and ``4.0`` the same style and
     keeps ``DS-01`` / ``"04 and 25"`` untouched. Missing stays missing.
     """
+
     def one(v: object) -> object:
         if v is None or (isinstance(v, float) and np.isnan(v)) or v is pd.NA:
             return pd.NA
@@ -166,8 +168,7 @@ def coerce_contest_values(df: pd.DataFrame, contest_cols: list) -> pd.DataFrame:
         out[c] = num.astype("float64")
     if bad:
         raise ValueError(
-            f"contest cells hold non-numeric values in {len(bad)} column(s); "
-            f"first 5: {bad[:5]}"
+            f"contest cells hold non-numeric values in {len(bad)} column(s); first 5: {bad[:5]}"
         )
     return out
 
@@ -224,8 +225,7 @@ def split_redacted(raw_df: pd.DataFrame) -> RedactionSplit:
     cvr = _col(raw_df, ("_ID", "CvrNumber"))
     tab = _col(raw_df, ("_ID", "TabulatorNum"))
     is_redacted = (
-        pd.to_numeric(cvr, errors="coerce").isna()
-        | pd.to_numeric(tab, errors="coerce").isna()
+        pd.to_numeric(cvr, errors="coerce").isna() | pd.to_numeric(tab, errors="coerce").isna()
     )
     labels = cvr.astype("string")
     label_says_aggregate = labels.str.contains(AGGREGATE_LABEL_RE, na=False)
@@ -238,10 +238,13 @@ def split_redacted(raw_df: pd.DataFrame) -> RedactionSplit:
     is_single = is_redacted & ~is_aggregate
 
     redacted_labels = labels[is_redacted & ~pd.to_numeric(cvr, errors="coerce").notna()]
-    unknown = sorted({
-        str(v) for v in redacted_labels.dropna().unique()
-        if str(v) not in REDACTED_VALUES and not re.fullmatch(r"DS-\d+", str(v))
-    })
+    unknown = sorted(
+        {
+            str(v)
+            for v in redacted_labels.dropna().unique()
+            if str(v) not in REDACTED_VALUES and not re.fullmatch(r"DS-\d+", str(v))
+        }
+    )
     return RedactionSplit(
         ballots=raw_df[~is_redacted].copy(),
         redacted=raw_df[is_single].copy(),
@@ -253,6 +256,7 @@ def split_redacted(raw_df: pd.DataFrame) -> RedactionSplit:
 # ---------------------------------------------------------------------------
 # Phase 2: multi-sheet merge
 # ---------------------------------------------------------------------------
+
 
 def _row_fingerprints(notna_matrix: np.ndarray) -> np.ndarray:
     """Return an integer fingerprint per row.
@@ -273,9 +277,7 @@ def _row_fingerprints(notna_matrix: np.ndarray) -> np.ndarray:
     packed = np.packbits(notna_matrix, axis=1)  # (N, ceil(C/8))
     # View each row's packed bytes as a single structured element so np.unique
     # can hash whole rows in one pass.
-    structured = np.ascontiguousarray(packed).view(
-        np.dtype((np.void, packed.shape[1]))
-    )
+    structured = np.ascontiguousarray(packed).view(np.dtype((np.void, packed.shape[1])))
     _, codes = np.unique(structured, return_inverse=True)
     return codes.astype(np.int64).ravel()
 
@@ -333,15 +335,17 @@ def _infer_sheet_map(
     warnings: list[str] = []
     rare_counts = {"sheets": 0, "full_ballot": 0}
 
-    work = pd.DataFrame({
-        "bt":  bt,
-        "fp":  fingerprints,
-        "tab": pd.to_numeric(_col(df, tab_col), errors="coerce").to_numpy(),
-        "bat": pd.to_numeric(_col(df, bat_col), errors="coerce").to_numpy(),
-        "rec": pd.to_numeric(_col(df, rec_col), errors="coerce").to_numpy(),
-        # Cache the contest-count per row for the sanity check
-        "n_filled": n_filled_per_row,
-    })
+    work = pd.DataFrame(
+        {
+            "bt": bt,
+            "fp": fingerprints,
+            "tab": pd.to_numeric(_col(df, tab_col), errors="coerce").to_numpy(),
+            "bat": pd.to_numeric(_col(df, bat_col), errors="coerce").to_numpy(),
+            "rec": pd.to_numeric(_col(df, rec_col), errors="coerce").to_numpy(),
+            # Cache the contest-count per row for the sanity check
+            "n_filled": n_filled_per_row,
+        }
+    )
     first_row_of_fp = {int(fp): i for i, fp in reversed(list(enumerate(fingerprints)))}
 
     for bt_val, sub in work.groupby("bt"):
@@ -354,13 +358,14 @@ def _infer_sheet_map(
             n_rare = int(sum(fp_counts[f] for f in rare_fps))
             n_full = 0
             if len(keep_fps) >= 2:
-                union = np.logical_or.reduce(
-                    [notna[first_row_of_fp[int(f)]] for f in keep_fps]
+                union = np.logical_or.reduce([notna[first_row_of_fp[int(f)]] for f in keep_fps])
+                n_full = int(
+                    sum(
+                        fp_counts[f]
+                        for f in rare_fps
+                        if (notna[first_row_of_fp[int(f)]] == union).all()
+                    )
                 )
-                n_full = int(sum(
-                    fp_counts[f] for f in rare_fps
-                    if (notna[first_row_of_fp[int(f)]] == union).all()
-                ))
             rare_counts["sheets"] += n_rare
             rare_counts["full_ballot"] += n_full
             warnings.append(
@@ -466,8 +471,7 @@ def _assign_groups(
     has_sheet = ~np.isnan(sheet_no)
     forward = np.zeros(n, dtype=bool)
     forward[1:] = (
-        same_keys[1:] & has_sheet[1:] & has_sheet[:-1]
-        & (sheet_no[1:] == sheet_no[:-1] + 1)
+        same_keys[1:] & has_sheet[1:] & has_sheet[:-1] & (sheet_no[1:] == sheet_no[:-1] + 1)
     )
     pass1 = np.cumsum(~forward) - 1  # 0-based group ids
 
@@ -490,10 +494,11 @@ def _assign_groups(
         s, m = starts[g], int(masks[g])
         k = int(n_sheets_of_row[s])
         mergeable = (
-            same_keys[s]                       # adjacent to previous group's end
+            same_keys[s]  # adjacent to previous group's end
             and cur_end == s - 1
-            and cur_mask != 0 and m != 0       # both have inferred sheets
-            and (cur_mask & m) == 0            # complementary sheet sets
+            and cur_mask != 0
+            and m != 0  # both have inferred sheets
+            and (cur_mask & m) == 0  # complementary sheet sets
             and popcount(cur_mask) < k
             and popcount(cur_mask | m) <= k
         )
@@ -557,13 +562,12 @@ def combine_multisheet(
     fingerprints = _row_fingerprints(notna)
 
     sheet_map, n_sheets_per_bt, warnings, rare_counts = _infer_sheet_map(
-        df, contest_cols,
+        df,
+        contest_cols,
         min_fingerprint_share=min_fingerprint_share,
         fingerprints=fingerprints,
     )
-    multi_sheet_bts = tuple(sorted(
-        bt for bt, n in n_sheets_per_bt.items() if n >= 2
-    ))
+    multi_sheet_bts = tuple(sorted(bt for bt, n in n_sheets_per_bt.items() if n >= 2))
 
     bt = _col(df, bt_col).astype(str)
     tab = pd.to_numeric(_col(df, tab_col), errors="coerce")
@@ -577,8 +581,7 @@ def combine_multisheet(
     # Assign each row its sheet number (NaN if its fingerprint has none).
     bt_arr = bt.to_numpy()
     if sheet_map:
-        keys = pd.MultiIndex.from_tuples(list(sheet_map.keys()),
-                                         names=("bt", "fp"))
+        keys = pd.MultiIndex.from_tuples(list(sheet_map.keys()), names=("bt", "fp"))
         lookup = pd.Series(list(sheet_map.values()), index=keys, dtype="float64")
         row_keys = pd.MultiIndex.from_arrays(
             [bt_arr, fingerprints.astype(np.int64)], names=("bt", "fp")
@@ -586,14 +589,12 @@ def combine_multisheet(
         sheet_no = lookup.reindex(row_keys).to_numpy()
     else:
         sheet_no = np.full(len(df), np.nan)
-    n_sheets_of_row = np.array(
-        [n_sheets_per_bt.get(b, 0) for b in bt_arr], dtype=np.int64
-    )
+    n_sheets_of_row = np.array([n_sheets_per_bt.get(b, 0) for b in bt_arr], dtype=np.int64)
 
     # Sort by (tab, bat, rec) and assign voter groups.
-    sort_order = np.lexsort((rec.fillna(-1).to_numpy(),
-                             bat.fillna(-1).to_numpy(),
-                             tab.fillna(-1).to_numpy()))
+    sort_order = np.lexsort(
+        (rec.fillna(-1).to_numpy(), bat.fillna(-1).to_numpy(), tab.fillna(-1).to_numpy())
+    )
     df_sorted = df.iloc[sort_order].reset_index(drop=True)
     group_id, n_ooo = _assign_groups(
         bt_arr[sort_order],
@@ -633,8 +634,9 @@ def combine_multisheet(
     else:
         merged[("_ID", "voter_id")] = _col(merged, cvr_col).astype("string").to_numpy()
 
-    sheet_count_dist = {int(k): int(v) for k, v in
-                        pd.Series(sheet_counts.values).value_counts().items()}
+    sheet_count_dist = {
+        int(k): int(v) for k, v in pd.Series(sheet_counts.values).value_counts().items()
+    }
 
     return merged, MergeStats(
         sheet_count_distribution=sheet_count_dist,
@@ -651,9 +653,8 @@ def combine_multisheet(
 # Phase 3: full pipeline (split redaction + merge sheets + tidy)
 # ---------------------------------------------------------------------------
 
-def _redacted_voter_rows(
-    redacted: pd.DataFrame, columns: pd.MultiIndex
-) -> pd.DataFrame:
+
+def _redacted_voter_rows(redacted: pd.DataFrame, columns: pd.MultiIndex) -> pd.DataFrame:
     """Turn kept single-ballot redacted rows into voter rows.
 
     They carry no Tabulator/Batch/RecordId, so they cannot be merged with any
@@ -722,7 +723,8 @@ def clean_countywide(
 
     # 2. Combine sheets into per-voter rows (ordinary sheets only).
     merged, stats = combine_multisheet(
-        split.ballots, min_fingerprint_share=min_fingerprint_share,
+        split.ballots,
+        min_fingerprint_share=min_fingerprint_share,
     )
     warnings.extend(stats.warnings)
     merged = merged.copy()
@@ -745,8 +747,7 @@ def clean_countywide(
     # 4. Drop ballot-choice columns that are entirely blank across the
     #    output. This rarely fires (every contest is on someone's ballot)
     #    but it keeps the schema honest. Then cast marks to nullable Int8.
-    keep = [c for c in combined.columns
-            if c[0] == "_ID" or combined[c].notna().any()]
+    keep = [c for c in combined.columns if c[0] == "_ID" or combined[c].notna().any()]
     combined = combined.loc[:, keep].copy()
     for c in contest_columns(combined):
         combined[c] = combined[c].astype("Int8")
@@ -754,8 +755,14 @@ def clean_countywide(
 
     # 5. Integrity checks.
     if len(combined) > 0:
-        for required in ("CvrNumber", "TabulatorNum", "BallotType",
-                         "n_sheets", "voter_id", "redacted"):
+        for required in (
+            "CvrNumber",
+            "TabulatorNum",
+            "BallotType",
+            "n_sheets",
+            "voter_id",
+            "redacted",
+        ):
             assert ("_ID", required) in combined.columns, (
                 f"{election_key} missing required ID column: {required}"
             )
@@ -792,6 +799,7 @@ def clean_countywide(
 # Downstream-helper utilities (still useful even with countywide as default)
 # ---------------------------------------------------------------------------
 
+
 def detect_city_ballot_types(
     df: pd.DataFrame,
     marker: str = CITY_CONTEST_MARKER,
@@ -814,10 +822,7 @@ def detect_city_ballot_types(
         bt = bt.iloc[:, 0]
     bt = bt.astype(str)
 
-    marker_cols = [
-        c for c in contest_columns(df)
-        if isinstance(c[0], str) and marker in c[0]
-    ]
+    marker_cols = [c for c in contest_columns(df) if isinstance(c[0], str) and marker in c[0]]
     if not marker_cols:
         return ()
 
@@ -849,6 +854,7 @@ def flatten_columns(df: pd.DataFrame) -> list[str]:
 # DEPRECATED: kept for backwards compatibility with any external scripts
 # ---------------------------------------------------------------------------
 
+
 def clean_city_cvr(*args, **kwargs):
     """Deprecated. Use :func:`clean_countywide` and filter downstream.
 
@@ -857,10 +863,12 @@ def clean_city_cvr(*args, **kwargs):
     moved into the analysis layer (see ``clusters.ipynb``).
     """
     import warnings as _warnings
+
     _warnings.warn(
         "clean_city_cvr() is deprecated; use clean_countywide() and filter "
         "to City of Boulder downstream via detect_city_ballot_types().",
-        DeprecationWarning, stacklevel=2,
+        DeprecationWarning,
+        stacklevel=2,
     )
     # Strip the unused city_ballot_types/marker kwargs
     kwargs.pop("city_ballot_types", None)

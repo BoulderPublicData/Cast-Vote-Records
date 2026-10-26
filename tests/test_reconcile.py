@@ -99,11 +99,13 @@ def test_reconcile_fails_when_election_missing_from_summary(staged):
 def test_sov_crosscheck_is_informational(staged, tmp_path):
     sov_dir = tmp_path / "sov"
     sov_dir.mkdir()
-    pd.DataFrame({
-        "contest": ["City of Boulder Council Candidates"] * 3,
-        "candidate_or_option": ["Alice", "Bob", "Carol"],
-        "votes": [10, 7, 6],   # official totals incl. aggregated ballots
-    }).to_csv(sov_dir / "2023-coordinated-boulder-county.csv", index=False)
+    pd.DataFrame(
+        {
+            "contest": ["City of Boulder Council Candidates"] * 3,
+            "candidate_or_option": ["Alice", "Bob", "Carol"],
+            "votes": [10, 7, 6],  # official totals incl. aggregated ballots
+        }
+    ).to_csv(sov_dir / "2023-coordinated-boulder-county.csv", index=False)
     report = rec_mod.reconcile(verbose=False, sov_dir=sov_dir)
     assert report["has_regression"] is False
     sov = report["sov"][0]

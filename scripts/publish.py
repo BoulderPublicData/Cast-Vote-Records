@@ -32,10 +32,7 @@ METADATA_PATH = PROCESSED_DIR / "metadata.yaml"
 
 def _check_sqlite_utils():
     if sqlite_utils is None:
-        raise SystemExit(
-            "publish requires sqlite-utils. Install with: "
-            "pip install -e \".[publish]\""
-        )
+        raise SystemExit('publish requires sqlite-utils. Install with: pip install -e ".[publish]"')
 
 
 def build(verbose: bool = True):
@@ -72,6 +69,7 @@ def build(verbose: bool = True):
 
 def _write_metadata(verbose: bool) -> None:
     from .sources import SOURCES
+
     lines = [
         "title: Boulder County Cast Vote Records",
         "description_html: |",
@@ -106,9 +104,11 @@ def _main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="scripts.publish", description=__doc__)
     p.add_argument("--quiet", "-q", action="store_true")
     sub = p.add_subparsers(dest="cmd", required=True)
-    for name, text in (("build", "Build SQLite + metadata for Datasette"),
-                       ("serve", "Build then launch a local Datasette server"),
-                       ("deploy", "Build then `datasette publish vercel`")):
+    for name, text in (
+        ("build", "Build SQLite + metadata for Datasette"),
+        ("serve", "Build then launch a local Datasette server"),
+        ("deploy", "Build then `datasette publish vercel`"),
+    ):
         sp = sub.add_parser(name, help=text)
         sp.add_argument("--quiet", "-q", action="store_true", default=argparse.SUPPRESS)
     a = p.parse_args(argv)
@@ -122,13 +122,19 @@ def _main(argv: list[str] | None = None) -> int:
             cmd += ["serve", str(DB_PATH), "-m", str(METADATA_PATH)]
         else:
             cmd += [
-                "publish", "vercel", str(DB_PATH), "-m", str(METADATA_PATH),
-                "--project", "cast-vote-records",
+                "publish",
+                "vercel",
+                str(DB_PATH),
+                "-m",
+                str(METADATA_PATH),
+                "--project",
+                "cast-vote-records",
             ]
         if shutil.which(cmd[0]) is None:
             print(f"{cmd[0]} not on PATH; install datasette first", file=sys.stderr)
             return 1
         import subprocess
+
         return subprocess.call(cmd)
     return 2
 

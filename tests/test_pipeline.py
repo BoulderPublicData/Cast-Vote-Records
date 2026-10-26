@@ -33,13 +33,14 @@ def _stage(tmp_path: Path, monkeypatch, files: dict[str, Path]) -> Path:
 
 
 def test_clean_emits_per_voter_csv_for_multisheet_fixture(
-    tmp_path: Path, multisheet_cvr_path: Path, monkeypatch,
+    tmp_path: Path,
+    multisheet_cvr_path: Path,
+    monkeypatch,
 ):
     """End-to-end: stage one multi-sheet fixture as 2023-coordinated,
     point the pipeline at tmp dirs, run clean, confirm the wide CSV
     exists with merged voter rows."""
-    proc_dir = _stage(tmp_path, monkeypatch,
-                      {"2023-Coordinated-CVR.xlsx": multisheet_cvr_path})
+    proc_dir = _stage(tmp_path, monkeypatch, {"2023-Coordinated-CVR.xlsx": multisheet_cvr_path})
 
     summary = clean_mod.clean(elections=["2023-coordinated"], verbose=False)
 
@@ -65,19 +66,24 @@ def test_clean_emits_per_voter_csv_for_multisheet_fixture(
 
 
 def test_clean_calls_contest_validator(
-    tmp_path: Path, multisheet_cvr_path: Path, monkeypatch,
+    tmp_path: Path,
+    multisheet_cvr_path: Path,
+    monkeypatch,
 ):
     _stage(tmp_path, monkeypatch, {"2023-Coordinated-CVR.xlsx": multisheet_cvr_path})
     calls = []
     real = clean_mod.validate_contest_columns
-    monkeypatch.setattr(clean_mod, "validate_contest_columns",
-                        lambda df: calls.append(len(df)) or real(df))
+    monkeypatch.setattr(
+        clean_mod, "validate_contest_columns", lambda df: calls.append(len(df)) or real(df)
+    )
     clean_mod.clean(elections=["2023-coordinated"], verbose=False)
     assert calls == [9]
 
 
 def test_one_bad_election_does_not_stop_the_others(
-    tmp_path: Path, multisheet_cvr_path: Path, monkeypatch,
+    tmp_path: Path,
+    multisheet_cvr_path: Path,
+    monkeypatch,
 ):
     """A file with text in a contest cell fails loudly, but the other
     election is still cleaned and written (#14, #19)."""
@@ -85,13 +91,16 @@ def test_one_bad_election_does_not_stop_the_others(
     raw = pd.read_excel(multisheet_cvr_path, header=None, engine="openpyxl")
     raw.iloc[5, 6] = "overvote"
     raw.to_excel(bad, header=False, index=False)
-    proc_dir = _stage(tmp_path, monkeypatch, {
-        "2023-Coordinated-CVR.xlsx": bad,
-        "2025-Coordinated-CVR.xlsx": multisheet_cvr_path,
-    })
+    proc_dir = _stage(
+        tmp_path,
+        monkeypatch,
+        {
+            "2023-Coordinated-CVR.xlsx": bad,
+            "2025-Coordinated-CVR.xlsx": multisheet_cvr_path,
+        },
+    )
     with pytest.raises(SystemExit) as exc:
-        clean_mod.clean(elections=["2023-coordinated", "2025-coordinated"],
-                        verbose=False)
+        clean_mod.clean(elections=["2023-coordinated", "2025-coordinated"], verbose=False)
     assert exc.value.code == 1
     assert (proc_dir / "2025-coordinated-county-wide-by-voter.csv").exists()
     assert not (proc_dir / "2023-coordinated-county-wide-by-voter.csv").exists()
@@ -100,10 +109,11 @@ def test_one_bad_election_does_not_stop_the_others(
 
 
 def test_clean_reads_the_staged_manifest_not_the_repo_one(
-    tmp_path: Path, multisheet_cvr_path: Path, monkeypatch,
+    tmp_path: Path,
+    multisheet_cvr_path: Path,
+    monkeypatch,
 ):
-    proc_dir = _stage(tmp_path, monkeypatch,
-                      {"2023-Coordinated-CVR.xlsx": multisheet_cvr_path})
+    proc_dir = _stage(tmp_path, monkeypatch, {"2023-Coordinated-CVR.xlsx": multisheet_cvr_path})
     (tmp_path / "original" / "manifest.json").write_text(
         '{"2023-Coordinated-CVR.xlsx": {"sha256": "feedface", "size": 1, '
         '"retrieved_at": "2023-11-29T00:00:00Z"}}'
@@ -115,13 +125,20 @@ def test_clean_reads_the_staged_manifest_not_the_repo_one(
 
 
 def test_partial_clean_upserts_summary_and_provenance(
-    tmp_path: Path, multisheet_cvr_path: Path, minimal_cvr_path: Path, monkeypatch,
+    tmp_path: Path,
+    multisheet_cvr_path: Path,
+    minimal_cvr_path: Path,
+    monkeypatch,
 ):
     """`clean --election X` must not drop the other elections' rows (#10)."""
-    proc_dir = _stage(tmp_path, monkeypatch, {
-        "2023-Coordinated-CVR.xlsx": multisheet_cvr_path,
-        "2025-Coordinated-CVR.xlsx": minimal_cvr_path,
-    })
+    proc_dir = _stage(
+        tmp_path,
+        monkeypatch,
+        {
+            "2023-Coordinated-CVR.xlsx": multisheet_cvr_path,
+            "2025-Coordinated-CVR.xlsx": minimal_cvr_path,
+        },
+    )
     clean_mod.clean(verbose=False)
     first = pd.read_csv(proc_dir / "_summary.csv")
     assert list(first["election_key"]) == ["2023-coordinated", "2025-coordinated"]
@@ -136,10 +153,11 @@ def test_partial_clean_upserts_summary_and_provenance(
 
 
 def test_failed_election_keeps_its_previous_summary_row(
-    tmp_path: Path, multisheet_cvr_path: Path, monkeypatch,
+    tmp_path: Path,
+    multisheet_cvr_path: Path,
+    monkeypatch,
 ):
-    proc_dir = _stage(tmp_path, monkeypatch,
-                      {"2023-Coordinated-CVR.xlsx": multisheet_cvr_path})
+    proc_dir = _stage(tmp_path, monkeypatch, {"2023-Coordinated-CVR.xlsx": multisheet_cvr_path})
     clean_mod.clean(elections=["2023-coordinated"], verbose=False)
     bad = tmp_path / "original" / "2023-Coordinated-CVR.xlsx"
     raw = pd.read_excel(bad, header=None, engine="openpyxl")
@@ -163,10 +181,11 @@ def test_clean_stops_on_lfs_pointer(tmp_path: Path, monkeypatch):
 
 
 def test_clean_by_year_and_old_key_hint(
-    tmp_path: Path, multisheet_cvr_path: Path, monkeypatch,
+    tmp_path: Path,
+    multisheet_cvr_path: Path,
+    monkeypatch,
 ):
-    proc_dir = _stage(tmp_path, monkeypatch,
-                      {"2023-Coordinated-CVR.xlsx": multisheet_cvr_path})
+    proc_dir = _stage(tmp_path, monkeypatch, {"2023-Coordinated-CVR.xlsx": multisheet_cvr_path})
     clean_mod.clean(years=[2023], verbose=False)
     assert (proc_dir / "2023-coordinated-county-wide-by-voter.csv").exists()
     with pytest.raises(SystemExit, match="lowercase"):
