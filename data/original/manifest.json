@@ -1,7 +1,7 @@
 {
   "2019-CVR.xlsx": {
     "first_committed_at": "2026-05-23T19:03:50Z",
-    "obtained_at": "",
+    "obtained_at": "2023-12-19",
     "retrieved_at": "",
     "sha256": "447217d6eb02a399badf85ea7605b3a89d2437e42b20373e786d6b84d6b19ae3",
     "size": 16789916,
@@ -11,7 +11,7 @@
   },
   "2020-CVR.xlsx": {
     "first_committed_at": "2026-05-23T19:03:50Z",
-    "obtained_at": "",
+    "obtained_at": "2023-12-19",
     "retrieved_at": "",
     "sha256": "06cdc8d99696a7d5152d68edc18e057dd2d13b6c07524529f825215a40dd5349",
     "size": 79925201,
@@ -21,7 +21,7 @@
   },
   "2021-CVR.xlsx": {
     "first_committed_at": "2026-05-23T19:03:50Z",
-    "obtained_at": "",
+    "obtained_at": "2023-12-19",
     "retrieved_at": "",
     "sha256": "69f536a9646362ac0b150abcaceceff2bfaf212568180b7a66fcb104a537505d",
     "size": 13837396,
@@ -31,7 +31,7 @@
   },
   "2022-CVR.xlsx": {
     "first_committed_at": "2026-05-23T19:03:50Z",
-    "obtained_at": "",
+    "obtained_at": "2023-12-19",
     "retrieved_at": "",
     "sha256": "0b4462680072c836ed570973087f972014ffd2a8c62a7703d1fcacc9d2f2b88c",
     "size": 81508144,
