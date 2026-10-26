@@ -70,13 +70,15 @@ More recipes — wide→long pivots, cross-election pools, undervote-vs-ineligib
 
 ## Provenance and refresh
 
-Every file in `data/original/` is hashed in [`data/original/manifest.json`](data/original/manifest.json) with a SHA-256, byte count, and mtime. [`data/processed/provenance.csv`](data/processed/provenance.csv) joins each processed CSV back to its source xlsx (URL, hash, retrieval time). The audit report in [`data/audit/summary.md`](data/audit/summary.md) is regenerated on every `python -m scripts.audit` run.
+Every file in `data/original/` is hashed in [`data/original/manifest.json`](data/original/manifest.json) with a SHA-256 and byte count, plus when it was retrieved or obtained and when the County saved the workbook. `fetch` verifies the hashes on every run. [`data/processed/provenance.csv`](data/processed/provenance.csv) joins each processed CSV back to its source xlsx (URL, hash, retrieval time). The audit report in [`data/audit/summary.md`](data/audit/summary.md) is regenerated on every `python -m scripts.audit` run.
 
 The Boulder County Clerk publishes a new CVR within about two months of every election. To pull the latest:
 
 ```bash
-pip install -e ".[analysis]"
-python -m scripts.pipeline        # fetch → clean → audit
+git lfs pull                       # originals + processed CSVs are Git LFS objects
+uv sync                            # core pipeline (uv.lock pins every version)
+uv run python -m scripts.pipeline  # fetch (verify hashes) → clean → audit
+uv run python -m scripts.pipeline reconcile
 ```
 
 To opt into scheduled refresh PRs via GitHub Actions, rename [`.github/workflows/refresh.yml.disabled`](.github/workflows/refresh.yml.disabled) to `refresh.yml`.
@@ -87,8 +89,8 @@ To opt into scheduled refresh PRs via GitHub Actions, rename [`.github/workflows
 git clone https://github.com/BoulderPublicData/Cast-Vote-Records
 cd Cast-Vote-Records
 git lfs pull                            # fetch the xlsx + processed CSVs
-pip install -e ".[analysis]"
-jupyter notebook clusters.ipynb         # twin-path UMAP + HDBSCAN small-multiples
+uv sync --extra analysis                # or: pip install -r requirements.txt
+uv run jupyter notebook clusters.ipynb  # twin-path UMAP + HDBSCAN small-multiples
 ```
 
 The analysis notebook ([`clusters.ipynb`](clusters.ipynb)) runs the McInnes two-pass UMAP + HDBSCAN pipeline on every processed CSV and renders a small-multiples comparison across elections. See [`AGENTS.md`](AGENTS.md) for the methodological rationale.

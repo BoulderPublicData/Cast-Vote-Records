@@ -14,30 +14,33 @@ Follows the [data-liberation](https://github.com/brianckeegan/data-liberation-sk
 * `data/audit/` holds auto-generated reports.
 * `data/lookups/` is reserved for crosswalks (currently empty — single-source).
 
-The pragmatic choices: keep setuptools (not hatchling/uv) and avoid a Source ABC layer (a single source doesn't warrant it). Otherwise the data-liberation conventions apply — manifest, provenance, pandera schema validation, Markdown audit report, reconcile script, optional Datasette publishing, opt-in scheduled refresh.
+The pragmatic choice: avoid a Source ABC layer (a single source doesn't warrant it). Tooling matches the sibling [Election-Results](https://github.com/BoulderPublicData/Election-Results) repo: uv with a committed `uv.lock`, hatchling, Python ≥ 3.11 (`.python-version`), and the same ruff config. Otherwise the data-liberation conventions apply — manifest, provenance, pandera schema validation, Markdown audit report, reconcile script, optional Datasette publishing, opt-in scheduled refresh.
 
 ## Quickstart
 
 ```bash
-pip install -e ".[analysis,test]"
-pytest                                # 27 tests, < 1 second
-python -m scripts.pipeline            # fetch → clean → audit
-jupyter notebook clusters.ipynb
+git lfs pull                          # the originals and processed CSVs are LFS objects
+uv sync --all-extras                  # core + analysis + publish extras + dev group (pytest, ruff)
+uv run ruff check .
+uv run pytest                         # a few seconds; synthetic fixtures only
+uv run python -m scripts.pipeline     # fetch (verify hashes) → clean → audit
+uv run python -m scripts.pipeline reconcile [--sov ../Election-Results/data/processed/statements-of-votes]
+uv run jupyter nbconvert --to notebook --execute --inplace clusters.ipynb
 ```
 
-The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clean|audit|reconcile|publish|list}`.
+The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clean|audit|reconcile|publish|list}`. Shared options (`-q`, `-e`, `--force`, `--fail-on-empty`, `--update-manifest`) work before or after the subcommand; one the subcommand doesn't use is an error.
 
 ## Layout
 
 | Path | Responsibility |
 | --- | --- |
 | `scripts/config.py` | Path constants (`ORIGINAL_DIR`, `PROCESSED_DIR`, ...) |
-| `scripts/sources.py` | `CvrSource` dataclass + `SOURCES` manifest tuple |
-| `scripts/loader.py` | `load_raw_cvr()` — reconstructs the Dominion 4-row header into a MultiIndex DataFrame |
+| `scripts/sources.py` | `CvrSource` dataclass + `SOURCES` manifest tuple; `ARCHIVED_ORIGINALS` for files kept but not processed (the CORA copy of 2023) |
+| `scripts/loader.py` | `load_raw_cvr()` — reconstructs the Dominion 4-row header into a MultiIndex DataFrame; repairs mojibake in contest/candidate names (`ftfy.fix_encoding`); refuses LFS pointer files |
 | `scripts/cleaner.py` | `clean_countywide()` — normalizes `BallotType` to text, rejects non-numeric contest cells, `split_redacted()` drops multi-ballot aggregates and keeps single redacted ballots (`_ID/redacted`), `combine_multisheet()` merges each voter's sheets (forward runs, then complementary/out-of-order runs), drops all-NaN contest cols, casts marks to `Int8`, integrity-checks, flattens columns. `detect_city_ballot_types()` is kept as a downstream helper. |
 | `scripts/schema.py` | Pandera `ID_BLOCK_SCHEMA` (unique `voter_id`, `n_sheets >= 1`, text `BallotType`, IDs required on non-redacted rows) + `validate_id_block` + `validate_contest_columns` (blank/0/1 only; text fails). `scripts.clean` calls both. |
-| `scripts/fetch.py` | Idempotent downloader; writes `data/original/manifest.json` with per-file SHA-256 |
-| `scripts/clean.py` | Orchestrator: walks each source, runs loader + cleaner, writes per-voter wide CSV + `provenance.csv` + `_summary.csv` (with sheet-count distribution and multi-sheet BallotTypes) |
+| `scripts/fetch.py` | Idempotent downloader. Stops with "run `git lfs pull`" if an original is an LFS pointer; **verifies** every file against `data/original/manifest.json` and fails on a mismatch (`--update-manifest` to accept a deliberate change); records `retrieved_at` at download, plus `obtained_at` (CORA, hand-entered), `first_committed_at` and the workbook's own timestamps. Never uses file mtimes. |
+| `scripts/clean.py` | Orchestrator: walks each source, runs loader + cleaner + both validators, writes per-voter wide CSV, and **upserts** `provenance.csv` + `_summary.csv` by `election_key` (a `--election` subset run keeps the other rows). One failing election doesn't stop the rest; the run exits non-zero. |
 | `scripts/audit.py` | Summary stats per processed CSV → `data/audit/summary.md` + `docs/variables.{md,csv}` |
 | `scripts/reconcile.py` | Re-reads each original with calamine, re-applies the redaction rule, checks `_summary.csv` and every processed CSV (row count, unique `voter_id`, Σ `n_sheets`, redacted count, per-column mark totals); non-zero exit on mismatch. `--sov DIR` adds an informational Statement of Votes cross-check against Election-Results. |
 | `scripts/publish.py` | Builds `data/processed/cast_vote_records.db` for Datasette + auto-generates `metadata.yaml` (opt-in) |
@@ -53,7 +56,7 @@ The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clea
 | `data/audit/` | Latest `summary.md` and `reconcile.md` (committed); per-run timestamped copies (gitignored) |
 | `data/lookups/` | Crosswalks / code systems (empty for now) |
 | `clusters.ipynb` | The McInnes two-pass UMAP + HDBSCAN small-multiples analysis |
-| `.github/workflows/tests.yml` | Always-on: pytest on push and PR |
+| `.github/workflows/tests.yml` | Always-on: ruff + pytest on Python 3.11–3.13; then a `reconcile` job with LFS checkout (and the Election-Results SoV cross-check when that repo is reachable) |
 | `.github/workflows/{refresh,publish,gh-pages}.yml.disabled` | Opt-in CI for scheduled refresh, Datasette deploy, Quarto site |
 
 ## Background: what a Cast Vote Record actually is

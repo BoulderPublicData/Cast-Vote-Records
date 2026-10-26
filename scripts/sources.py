@@ -32,6 +32,37 @@ class CvrSource:
 
     notes: str = ""
 
+    obtained_at: str = ""
+    """For CORA disclosures: the date the County released the file, entered by
+    hand from the CORA response (ISO 8601). Blank when not recorded; the
+    manifest's ``first_committed_at`` is then the best available upper bound."""
+
+
+@dataclass(frozen=True)
+class ArchivedOriginal:
+    """A file kept in ``data/original/`` for provenance but not processed."""
+
+    filename: str
+    notes: str
+    obtained_at: str = ""
+
+
+ARCHIVED_ORIGINALS: tuple[ArchivedOriginal, ...] = (
+    ArchivedOriginal(
+        "2023-CVR.xlsx",
+        notes=(
+            "CORA copy of the 2023 Coordinated CVR. Same 118,787 rows, columns "
+            "and ballots as the public 2023-Coordinated-CVR.xlsx: the two files "
+            "hold an identical multiset of rows once CvrNumber (a row sequence "
+            "number) is ignored, but in a different row order, and the workbook "
+            "was re-saved 2023-12-01 (public copy: 2023-11-28). Not processed, "
+            "because it would duplicate the public file; kept so the CORA "
+            "release is archived."
+        ),
+    ),
+)
+"""Originals that are archived but deliberately not in :data:`SOURCES`."""
+
 
 SOURCES: tuple[CvrSource, ...] = (
     CvrSource(

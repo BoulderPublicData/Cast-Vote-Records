@@ -90,12 +90,17 @@ def write_audit(verbose: bool = True) -> Path:
     from .fetch import load_manifest
     manifest = load_manifest()
     if manifest:
-        lines.append("| File | SHA-256 (first 12) | size (MB) | mtime |")
-        lines.append("| --- | --- | ---: | --- |")
+        lines.append(
+            "| File | SHA-256 (first 12) | size (MB) | retrieved | obtained (CORA) "
+            "| first committed | workbook saved |"
+        )
+        lines.append("| --- | --- | ---: | --- | --- | --- | --- |")
         for fname, info in sorted(manifest.items()):
             lines.append(
                 f"| `{fname}` | `{info['sha256'][:12]}` | "
-                f"{info['size']/1e6:.1f} | {info['mtime_iso']} |"
+                f"{info['size']/1e6:.1f} | {info.get('retrieved_at', '')} | "
+                f"{info.get('obtained_at', '')} | {info.get('first_committed_at', '')} | "
+                f"{info.get('xlsx_modified', '')} |"
             )
     else:
         lines.append("(manifest.json not yet generated; run `python -m scripts.fetch`)")

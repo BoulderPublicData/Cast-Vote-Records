@@ -35,10 +35,13 @@ import re
 import sys
 from pathlib import Path
 
+import ftfy
 import numpy as np
 import pandas as pd
 
-from .config import AUDIT_DIR, ORIGINAL_DIR, PROCESSED_DIR, ensure_dirs
+from . import config
+from .config import ensure_dirs
+from .fetch import LfsPointerError, check_lfs_pointers
 from .sources import SOURCES
 
 _ID_LABELS = {
@@ -46,6 +49,11 @@ _ID_LABELS = {
     "CountingGroup", "PrecinctPortion", "BallotType",
 }
 _AGGREGATE_RE = re.compile(r"consolidat|aggregat", re.IGNORECASE)
+
+
+def _fix(text: object) -> object:
+    """Repair mojibake in a header cell, as the loader does (see #22)."""
+    return ftfy.fix_encoding(text).replace("\xa0", " ") if isinstance(text, str) else text
 
 
 def _read_original(path: Path) -> pd.DataFrame:
@@ -69,7 +77,7 @@ def independent_counts(path: Path) -> dict:
     id_pos = {str(labels.iloc[i]): i for i in range(raw.shape[1])
               if isinstance(labels.iloc[i], str) and labels.iloc[i] in _ID_LABELS}
     contest_pos = [i for i in range(raw.shape[1]) if i not in id_pos.values()]
-    names = [f"{raw.iloc[1, i]}::{raw.iloc[2, i]}" for i in contest_pos]
+    names = [f"{_fix(raw.iloc[1, i])}::{_fix(raw.iloc[2, i])}" for i in contest_pos]
 
     cvr = body.iloc[:, id_pos["CvrNumber"]]
     tab = body.iloc[:, id_pos["TabulatorNum"]]
@@ -93,7 +101,7 @@ def independent_counts(path: Path) -> dict:
 
 
 def _processed_path(election_key: str) -> Path:
-    return PROCESSED_DIR / f"{election_key}-county-wide-by-voter.csv"
+    return config.PROCESSED_DIR / f"{election_key}-county-wide-by-voter.csv"
 
 
 def check_processed(path: Path, indep: dict, summary_row: dict | None) -> dict:
@@ -195,7 +203,7 @@ def sov_crosscheck(src, indep: dict, sov_dir: Path) -> pd.DataFrame | None:
 # ---------------------------------------------------------------------------
 
 def _load_summary() -> pd.DataFrame:
-    summary_csv = PROCESSED_DIR / "_summary.csv"
+    summary_csv = config.PROCESSED_DIR / "_summary.csv"
     if not summary_csv.exists():
         raise SystemExit(
             f"{summary_csv} not found; run `python -m scripts.clean` first"
@@ -206,13 +214,17 @@ def _load_summary() -> pd.DataFrame:
 def reconcile(verbose: bool = True, *, sov_dir: Path | None = None) -> dict:
     """Run every check; raise ``SystemExit(1)`` on any regression."""
     ensure_dirs()
+    try:
+        check_lfs_pointers(config.ORIGINAL_DIR / s.filename for s in SOURCES)
+    except LfsPointerError as exc:
+        raise SystemExit(f"FAIL: {exc}") from exc
     summary = _load_summary()
 
     rows: list[dict] = []
     sov_frames: list[pd.DataFrame] = []
     has_regression = False
     for src in SOURCES:
-        orig = ORIGINAL_DIR / src.filename
+        orig = config.ORIGINAL_DIR / src.filename
         base = {"election_key": src.election_key}
         if not orig.exists():
             rows.append({**base, "status": "skip-no-original"})
@@ -260,16 +272,16 @@ def reconcile(verbose: bool = True, *, sov_dir: Path | None = None) -> dict:
 
     report = {"rows": rows, "has_regression": has_regression}
     sov_summary = _summarize_sov(sov_frames) if sov_frames else None
-    sov_csv = AUDIT_DIR / "reconcile-sov.csv"
+    sov_csv = config.AUDIT_DIR / "reconcile-sov.csv"
     if sov_summary is not None:
         report["sov"] = sov_summary.to_dict(orient="records")
         pd.concat(sov_frames).to_csv(sov_csv, index=False)
     elif sov_csv.exists():
         sov_csv.unlink()  # don't leave a stale cross-check beside a new report
-    (AUDIT_DIR / "reconcile.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
-    (AUDIT_DIR / "reconcile.md").write_text(_render_md(rows, sov_summary))
+    (config.AUDIT_DIR / "reconcile.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
+    (config.AUDIT_DIR / "reconcile.md").write_text(_render_md(rows, sov_summary))
     if verbose:
-        print(f"  wrote {AUDIT_DIR / 'reconcile.md'}")
+        print(f"  wrote {config.AUDIT_DIR / 'reconcile.md'}")
 
     if has_regression:
         print("RECONCILE REGRESSION — see data/audit/reconcile.md", file=sys.stderr)

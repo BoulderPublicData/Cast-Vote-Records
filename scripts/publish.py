@@ -55,7 +55,7 @@ def build(verbose: bool = True):
     for csv in wide_csvs:
         election_key = csv.name.removesuffix("-county-wide-by-voter.csv")
         table_name = election_key.replace("-", "_").lower()
-        df = pd.read_csv(csv, low_memory=False)
+        df = pd.read_csv(csv, low_memory=False, dtype={"_ID/BallotType": str})
         db[table_name].insert_all(df.to_dict(orient="records"))  # type: ignore[union-attr]
         if verbose:
             print(f"  inserted {len(df):,} rows into table '{table_name}'")
@@ -105,16 +105,19 @@ def _write_metadata(verbose: bool) -> None:
 
 def _main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="scripts.publish", description=__doc__)
+    p.add_argument("--quiet", "-q", action="store_true")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("build", help="Build SQLite + metadata for Datasette")
-    sub.add_parser("serve", help="Build then launch a local Datasette server")
-    sub.add_parser("deploy", help="Build then `datasette publish vercel`")
+    for name, text in (("build", "Build SQLite + metadata for Datasette"),
+                       ("serve", "Build then launch a local Datasette server"),
+                       ("deploy", "Build then `datasette publish vercel`")):
+        sp = sub.add_parser(name, help=text)
+        sp.add_argument("--quiet", "-q", action="store_true", default=argparse.SUPPRESS)
     a = p.parse_args(argv)
     if a.cmd == "build":
-        build()
+        build(verbose=not a.quiet)
         return 0
     if a.cmd in {"serve", "deploy"}:
-        build()
+        build(verbose=not a.quiet)
         cmd = ["datasette"]
         if a.cmd == "serve":
             cmd += ["serve", str(DB_PATH), "-m", str(METADATA_PATH)]
