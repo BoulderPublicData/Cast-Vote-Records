@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from .audit import write_audit
 from .clean import clean
@@ -79,8 +80,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
     reconcile_p = sub.add_parser("reconcile", help="independent count check")
     reconcile_p.add_argument("--quiet", "-q", action="store_true")
+    reconcile_p.add_argument("--sov", type=Path, default=None, metavar="DIR",
+                             help="Election-Results statements-of-votes/ folder "
+                                  "for an informational cross-check")
     reconcile_p.set_defaults(func=lambda a: (
-        reconcile(verbose=not a.quiet), 0)[1])
+        reconcile(verbose=not a.quiet, sov_dir=a.sov), 0)[1])
 
     publish_p = sub.add_parser("publish", help="build / serve / deploy Datasette")
     publish_p.add_argument("publish_cmd", choices=["build", "serve", "deploy"])

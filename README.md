@@ -13,11 +13,11 @@ Nine original CVR files (seven elections plus a CORA-disclosed 2023 alongside th
 | [2019 Coordinated](data/processed/2019-Coordinated-county-wide-by-voter.csv) | CORA | 115,056 | 115,056 | single-sheet |
 | [2020 General](data/processed/2020-General-county-wide-by-voter.csv) | CORA | 205,796 | 205,796 | single-sheet |
 | [2021 Coordinated](data/processed/2021-Coordinated-county-wide-by-voter.csv) | CORA | 108,363 | 108,363 | single-sheet |
-| [2022 General](data/processed/2022-General-county-wide-by-voter.csv) | CORA | 320,542 | **163,043** | **two-sheet** for nearly every BallotType |
-| [2023 Coordinated](data/processed/2023-Coordinated-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx) | 118,669 | 118,669 | single-sheet |
-| [2024 Primary](data/processed/2024-Primary-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx) | 64,775 | 64,775 | single-sheet; no City of Boulder municipal contests |
-| [2024 General](data/processed/2024-General-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx) | 384,384 | **193,238** | **two-sheet** for every BallotType |
-| [2025 Coordinated](data/processed/2025-Coordinated-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx) | 120,529 | 120,529 | single-sheet |
+| [2022 General](data/processed/2022-General-county-wide-by-voter.csv) | CORA | 320,543 | **162,714** | **two-sheet** for nearly every BallotType |
+| [2023 Coordinated](data/processed/2023-Coordinated-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx) | 118,769 | 118,769 | single-sheet |
+| [2024 Primary](data/processed/2024-Primary-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx) | 65,787 | 65,787 | single-sheet; no City of Boulder municipal contests |
+| [2024 General](data/processed/2024-General-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx) | 384,384 | **193,005** | **two-sheet** for every BallotType |
+| [2025 Coordinated](data/processed/2025-Coordinated-county-wide-by-voter.csv) | [public](https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx) | 121,537 | 121,537 | single-sheet |
 
 Exact per-voter counts (including the sheet-count distribution per election) are pinned in [`data/processed/_summary.csv`](data/processed/_summary.csv) and the latest [`data/audit/summary.md`](data/audit/summary.md).
 

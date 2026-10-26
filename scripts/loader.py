@@ -68,8 +68,8 @@ into the same numeric value.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Union
 
 import pandas as pd
 
@@ -85,14 +85,41 @@ ID_LABELS: frozenset[str] = frozenset({
 })
 """All known ID-column labels across Boulder County CVRs 2019–2025."""
 
-REDACTED_VALUES: frozenset[str] = frozenset({
-    "RCV Redacted & Randomly Sorted",
-    "Redacted & Aggregated",
+SINGLE_BALLOT_SENTINELS: frozenset[str] = frozenset({
+    "Redacted",                         # 2024 Primary, 2025 Coordinated
+    "RCV Redacted & Randomly Sorted",   # 2023 Coordinated
 })
-"""Strings the County puts in :code:`CvrNumber` for privacy-aggregated rows."""
+"""``CvrNumber`` strings the County uses for an **individual** ballot whose
+identifiers (``TabulatorNum`` / ``BatchId`` / ``RecordId`` / ``ImprintedId``)
+were blanked for privacy. Each such row still records exactly one ballot's
+marks (every contest cell is 0, 1 or blank), so the cleaner keeps it and
+flags it with ``_ID/redacted = True``."""
+
+AGGREGATE_SENTINELS: frozenset[str] = frozenset({
+    "Redacted & Aggregated",                     # 2023 Coordinated
+    "Redacted and Aggregated - A cards",         # 2024 General
+    "Redacted and Aggregated - B cards",         # 2024 General
+    "Redacted and Aggregated - B cards or Property Owner Ballot",  # 2024 General
+    "Redacted and Consolidated",                 # 2024 Primary
+    "Redacted and Consolidated 10 Ballots",      # 2025 Coordinated
+    "Redacted and Consolidated 18 Ballots",      # 2025 Coordinated
+    "Redacted and Consolidated 20 Ballots",      # 2025 Coordinated
+})
+"""``CvrNumber`` strings observed on **aggregate** rows: one row summing the
+marks of several ballots (cell values > 1). The cleaner classifies aggregates
+by pattern (label contains "Consolidated" or "Aggregated") or by value (any
+contest cell > 1), not by this exact list, so a new label in a future file is
+still handled. 2019–2022 aggregates carry ``NaN`` in ``CvrNumber`` and 2021
+per-style summaries carry the ballot-style code (``"DS-01"``); both are
+caught by the value rule."""
+
+REDACTED_VALUES: frozenset[str] = SINGLE_BALLOT_SENTINELS | AGGREGATE_SENTINELS
+"""Every ``CvrNumber`` sentinel string observed across 2019–2025 (single-ballot
+and aggregate). Informational; see :func:`scripts.cleaner.split_redacted` for
+the classification rule."""
 
 
-def load_raw_cvr(path: Union[str, Path]) -> pd.DataFrame:
+def load_raw_cvr(path: str | Path) -> pd.DataFrame:
     """Read a CVR xlsx and reconstruct its column index.
 
     Parameters
@@ -113,7 +140,7 @@ def load_raw_cvr(path: Union[str, Path]) -> pd.DataFrame:
         ``0``/``1``/``NaN`` for single-choice contests and 0/1/NaN per
         candidate-round combination for ranked-choice contests.
     """
-    raw = pd.read_excel(path, header=None)
+    raw = pd.read_excel(path, header=None, engine="openpyxl")
     if len(raw) < 5:
         raise ValueError(f"{path}: fewer than 5 rows; not a Boulder County CVR")
 

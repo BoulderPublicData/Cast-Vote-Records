@@ -9,7 +9,6 @@ automatically.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -26,7 +25,7 @@ class CvrSource:
     filename: str
     """Filename inside ``data/original/`` (not a path)."""
 
-    public_url: Optional[str]
+    public_url: str | None
     """Direct download URL on ``assets.bouldercounty.gov`` if the County has
     posted this CVR publicly; ``None`` if the file came from a Colorado Open
     Records Act (CORA) disclosure and is not on the County website."""

@@ -10,8 +10,14 @@ Outputs:
   in the county (no jurisdiction filter).
 * ``data/processed/provenance.csv`` — one row per processed artifact with
   source URL, retrieved-at time, SHA-256, output path, row counts.
-* ``data/processed/_summary.csv`` — bookkeeping (n raw, n redacted,
-  n sheets, n voters, multi-sheet ballot types, sheet-count distribution).
+* ``data/processed/_summary.csv`` — bookkeeping (n raw, aggregate rows
+  dropped, single-ballot redacted rows kept, n sheets, n voters, out-of-order
+  merges, rare-fingerprint sheets, multi-sheet ballot types, sheet-count
+  distribution).
+
+One election failing (unreadable file, schema violation) does not stop the
+others: the error is reported, the remaining elections are cleaned, and the
+run exits non-zero at the end.
 """
 
 from __future__ import annotations
@@ -20,7 +26,7 @@ import argparse
 import json
 import sys
 import time
-from typing import Iterable
+from collections.abc import Iterable
 
 import pandas as pd
 
@@ -34,7 +40,7 @@ from .config import (
 )
 from .fetch import load_manifest
 from .loader import load_raw_cvr
-from .schema import validate_id_block
+from .schema import validate_contest_columns, validate_id_block
 from .sources import SOURCES, get_source
 
 
@@ -75,6 +81,7 @@ def clean(
     provenance_rows: list[dict] = []
     n_total_voters = 0
     all_warnings: list[str] = []
+    failures: list[str] = []
 
     for src in targets:
         raw_path = ORIGINAL_DIR / src.filename
@@ -87,19 +94,27 @@ def clean(
             size_mb = raw_path.stat().st_size / 1e6
             print(f"  loading {src.election_key} ({size_mb:.1f} MB)...", flush=True)
 
-        raw = load_raw_cvr(raw_path)
-        res = clean_countywide(raw, election_key=src.election_key)
         out_path = _wide_csv_path(src.election_key)
+        try:
+            raw = load_raw_cvr(raw_path)
+            res = clean_countywide(raw, election_key=src.election_key)
+            if res.n_voters > 0:
+                validate_id_block(res.cleaned)
+                validate_contest_columns(res.cleaned)
+        except Exception as exc:  # noqa: BLE001 — one bad file must not stop the others
+            msg = f"{src.election_key}: {type(exc).__name__}: {exc}"
+            failures.append(msg)
+            print(f"  [FAIL] {msg}", file=sys.stderr, flush=True)
+            continue
 
         if res.n_voters == 0:
             if verbose:
                 print(
                     f"  [empty] {src.election_key}: 0 voters after dropping "
-                    f"redacted rows",
+                    f"aggregate rows",
                     flush=True,
                 )
         else:
-            validate_id_block(res.cleaned)
             res.cleaned.to_csv(out_path, index=False)
             n_total_voters += res.n_voters
             if verbose:
@@ -110,7 +125,10 @@ def clean(
                     f"{res.n_sheets_after_redaction:,} sheets → "
                     f"{res.n_voters:,} voters × "
                     f"{res.n_choice_columns} choice cols  "
-                    f"({dist}) → {out_path.name}",
+                    f"({dist}; {res.n_redacted_kept:,} redacted kept, "
+                    f"{res.n_aggregate_rows_dropped:,} aggregates dropped, "
+                    f"{res.n_out_of_order_merges:,} out-of-order merges) "
+                    f"→ {out_path.name}",
                     flush=True,
                 )
 
@@ -123,9 +141,14 @@ def clean(
             "year":                    src.year,
             "election_type":           src.election_type,
             "n_raw_rows":              res.n_raw_rows,
-            "n_redacted_dropped":      res.n_redacted_dropped,
+            "n_aggregate_rows_dropped": res.n_aggregate_rows_dropped,
+            "n_redacted_kept":         res.n_redacted_kept,
+            "n_redacted_in_multisheet_styles": res.n_redacted_in_multisheet_styles,
             "n_sheets_after_redaction": res.n_sheets_after_redaction,
             "n_voters":                res.n_voters,
+            "n_out_of_order_merges":   res.n_out_of_order_merges,
+            "n_rare_fingerprint_sheets": res.n_rare_fingerprint_sheets,
+            "n_rare_fingerprint_full_ballot": res.n_rare_fingerprint_full_ballot,
             "n_choice_columns":        res.n_choice_columns,
             "multi_sheet_ballot_types": ",".join(res.multi_sheet_ballot_types),
             "sheet_count_distribution": json.dumps(
@@ -170,6 +193,12 @@ def clean(
             for w in all_warnings:
                 print(f"  - {w}")
 
+    if failures:
+        print(f"\nFAIL: {len(failures)} election(s) failed to clean:",
+              file=sys.stderr)
+        for f in failures:
+            print(f"  - {f}", file=sys.stderr)
+        raise SystemExit(1)
     if fail_on_empty and n_total_voters == 0:
         print("FAIL: pipeline produced zero voter rows", file=sys.stderr)
         raise SystemExit(1)
