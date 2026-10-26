@@ -99,7 +99,10 @@ SOURCES: tuple[CvrSource, ...] = (
         "2024-Primary", 2024, "Primary",
         "2024-Primary-CVR.xlsx",
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx",
-        notes="Partisan state primary; contains no City of Boulder municipal contests, so the pipeline produces an empty clean CSV.",
+        notes=(
+            "Partisan state primary; no City of Boulder contests (City-level "
+            "analyses skip it). Countywide rows retained."
+        ),
     ),
     CvrSource(
         "2024-General", 2024, "General",
