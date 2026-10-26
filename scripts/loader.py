@@ -71,6 +71,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 
+import ftfy
 import pandas as pd
 
 ID_LABELS: frozenset[str] = frozenset({
@@ -119,6 +120,21 @@ and aggregate). Informational; see :func:`scripts.cleaner.split_redacted` for
 the classification rule."""
 
 
+def repair_text(value: object) -> object:
+    """Repair UTF-8-read-as-Latin-1 mojibake in a header cell.
+
+    The 2024 General header reads ``Karina GarcÃ\xada`` for "García", and the
+    2022 General ``Paul NoÃ«l Fiorino`` for "Noël": the County's export
+    double-encoded them (also 2021 ``LaurenÂ\xa0Folkerts`` and 2023
+    ``Jorge ChÃ¡vez``). ``ftfy.fix_encoding`` reverses exactly that and leaves
+    correct text (including curly apostrophes) alone; non-breaking spaces then
+    become ordinary spaces. Non-strings pass through.
+    """
+    if not isinstance(value, str):
+        return value
+    return ftfy.fix_encoding(value).replace("\xa0", " ")
+
+
 def load_raw_cvr(path: str | Path) -> pd.DataFrame:
     """Read a CVR xlsx and reconstruct its column index.
 
@@ -136,16 +152,23 @@ def load_raw_cvr(path: str | Path) -> pd.DataFrame:
           (e.g. ``('_ID', 'CvrNumber')``, ``('_ID', 'BallotType')``)
         * ``(contest, candidate)`` for ballot-choice columns
 
-        Values for ID columns are strings; ballot-choice values are
-        ``0``/``1``/``NaN`` for single-choice contests and 0/1/NaN per
-        candidate-round combination for ranked-choice contests.
+        Contest and candidate names have mojibake repaired (see
+        :func:`repair_text`). Values for ID columns are strings; ballot-choice
+        values are ``0``/``1``/``NaN`` for single-choice contests and 0/1/NaN
+        per candidate-rank combination for ranked-choice contests.
     """
+    from .fetch import LfsPointerError, is_lfs_pointer
+
+    if is_lfs_pointer(Path(path)):
+        raise LfsPointerError(
+            f"{path} is a Git LFS pointer, not the spreadsheet. Run `git lfs pull` first."
+        )
     raw = pd.read_excel(path, header=None, engine="openpyxl")
     if len(raw) < 5:
         raise ValueError(f"{path}: fewer than 5 rows; not a Boulder County CVR")
 
-    contest_row = raw.iloc[1]
-    candidate_row = raw.iloc[2]
+    contest_row = raw.iloc[1].map(repair_text)
+    candidate_row = raw.iloc[2].map(repair_text)
     label_row = raw.iloc[3]
 
     cols: list[tuple[object, object]] = []

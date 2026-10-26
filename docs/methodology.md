@@ -6,14 +6,20 @@ How the wide CSVs in ``data/processed/`` are derived from the redacted xlsx file
 
 Boulder County publishes redacted Cast Vote Records on `assets.bouldercounty.gov` as Dominion XLSX exports. The 2023 Coordinated through 2025 Coordinated CVRs are posted on the County's by-year pages. The 2019–2022 CVRs are not publicly posted; they were obtained via Colorado Open Records Act disclosure and are archived in this repository under ``data/original/``.
 
-The source registry is in [`../scripts/sources.py`](../scripts/sources.py). `python -m scripts.fetch` downloads any artifact with a public URL and writes a SHA-256 manifest to ``data/original/manifest.json``.
+The source registry is in [`../scripts/sources.py`](../scripts/sources.py). `python -m scripts.fetch` downloads any artifact with a public URL and **verifies** every file in ``data/original/`` against the SHA-256 manifest ``data/original/manifest.json``. If a file is a Git LFS pointer (a fresh clone without `git lfs pull`), fetch, clean and reconcile stop with "run `git lfs pull` first". A hash mismatch fails the run instead of silently overwriting the manifest; `--update-manifest` accepts a deliberate change.
+
+The manifest records, per file: `sha256` and `size`; `retrieved_at` (set when `fetch` downloads the file); `obtained_at` (for CORA files, the release date, entered by hand in `sources.py`); `first_committed_at` (when the file entered this repository, an upper bound on when it was obtained; 2026-05-23 for every current file); and `xlsx_created` / `xlsx_modified` from the workbook itself, i.e. when the County produced the export. File modification times are never used, because a checkout resets them. `retrieved_at` and `obtained_at` are blank for the current files because neither was recorded when they were added.
+
+`data/original/2023-CVR.xlsx` is the CORA copy of the 2023 Coordinated CVR. It holds the same 118,787 rows and the same ballots as the public `2023-Coordinated-CVR.xlsx`: once `CvrNumber` (a row sequence number) is ignored, the two files contain an identical multiset of rows, in a different order. The workbook was re-saved 2023-12-01, against 2023-11-28 for the public copy. It is archived for provenance (`ARCHIVED_ORIGINALS` in `sources.py`) but not processed, because it would duplicate the public file.
 
 ## Pipeline
 
 ```
 data/original/*.xlsx
+    └── scripts.fetch: verify SHA-256 against manifest.json (stop on LFS pointers)
     └── scripts.loader.load_raw_cvr
         ├── reconstruct the 4-row Dominion header into a MultiIndex DataFrame
+        ├── repair mojibake in contest / candidate names (ftfy.fix_encoding)
         ├── ID columns → ("_ID", label)
         └── contest columns → (contest, candidate)
     └── scripts.cleaner.clean_countywide
@@ -104,7 +110,9 @@ Dominion's XLSX columns map cleanly to the NIST Common Data Format (SP 1500-103)
 
 ## Reproducibility
 
-Anyone can clone the repository, run `git lfs pull`, and regenerate every wide CSV with `python -m scripts.pipeline`. The output is deterministic given the same inputs.
+Anyone can clone the repository, run `git lfs pull` and `uv sync`, and regenerate every wide CSV with `uv run python -m scripts.pipeline`. Dependencies are pinned in `uv.lock`; `requirements.txt` is exported from it (`uv export --frozen --no-hashes --no-dev --extra analysis --extra publish -o requirements.txt`). The pipeline output is deterministic given the same inputs.
+
+The cluster outputs are reproducible too. `clusters.ipynb` seeds both UMAP runs (`random_state=42`), recomputes every election on each run (no cross-run cache), and is executed top to bottom before commit. `data/processed/cluster-provenance.csv` records, for each derived file, the input CSV's SHA-256, the output's SHA-256, the seed and parameters, and the Python and package versions.
 
 ## Limitations
 

@@ -62,3 +62,30 @@ def test_sentinel_sets_are_disjoint_and_classified_by_pattern():
     assert not (SINGLE_BALLOT_SENTINELS & AGGREGATE_SENTINELS)
     assert all(AGGREGATE_LABEL_RE.search(s) for s in AGGREGATE_SENTINELS)
     assert not any(AGGREGATE_LABEL_RE.search(s) for s in SINGLE_BALLOT_SENTINELS)
+
+
+def test_repair_text_fixes_mojibake_and_leaves_good_text():
+    from scripts.loader import repair_text
+    assert repair_text("Claudia De la Cruz / Karina GarcÃ\xada") == \
+        "Claudia De la Cruz / Karina García"
+    assert repair_text("Paul NoÃ«l Fiorino") == "Paul Noël Fiorino"
+    assert repair_text("LaurenÂ\xa0Folkerts") == "Lauren Folkerts"
+    for ok in ("Joe O\u2019Dea", "José", "Yes/For", "Aaron Brockett(1)"):
+        assert repair_text(ok) == ok
+    assert repair_text(None) is None
+
+
+def test_loader_repairs_mojibake_headers(tmp_path):
+    import numpy as np
+    rows = [
+        ["t", "v", np.nan, np.nan],
+        [np.nan, np.nan, "Presidential Electors (Vote For=1)", "Presidential Electors (Vote For=1)"],
+        [np.nan, np.nan, "Claudia De la Cruz / Karina GarcÃ\xada", "Other"],
+        ["CvrNumber", "BallotType", np.nan, np.nan],
+        [1, "01", 1, 0],
+    ]
+    path = tmp_path / "m.xlsx"
+    pd.DataFrame(rows).to_excel(path, header=False, index=False)
+    df = load_raw_cvr(path)
+    assert ("Presidential Electors (Vote For=1)",
+            "Claudia De la Cruz / Karina García") in df.columns

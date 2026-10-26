@@ -115,11 +115,14 @@ election_key,contest,choice,cvr_marks,aggregate_marks,sov_votes,delta
 2020-General,Town of Superior - Trustee (Vote For=3),Kevin Ryan,2965.0,42.0,3007.0,0.0
 2021-Coordinated,City of Boulder Council Candidates (Vote For=5),Michael Christy,14507.0,51.0,14558.0,0.0
 2021-Coordinated,City of Boulder Council Candidates (Vote For=5),Mark Wallach,17627.0,56.0,17683.0,0.0
+2021-Coordinated,City of Boulder Council Candidates (Vote For=5),Lauren Folkerts,15694.0,69.0,15763.0,0.0
 2021-Coordinated,City of Boulder Council Candidates (Vote For=5),Matt Benjamin,16435.0,66.0,16501.0,0.0
+2021-Coordinated,City of Boulder Council Candidates (Vote For=5),David Takahashi,8398.0,31.0,8429.0,0.0
 2021-Coordinated,City of Boulder Council Candidates (Vote For=5),Tara Winer,15154.0,51.0,15205.0,0.0
 2021-Coordinated,City of Boulder Council Candidates (Vote For=5),Nicole Speer,16224.0,63.0,16287.0,0.0
 2021-Coordinated,City of Boulder Council Candidates (Vote For=5),Dan Williams,13560.0,54.0,13614.0,0.0
 2021-Coordinated,City of Boulder Council Candidates (Vote For=5),Steve Rosenblum,13260.0,49.0,13309.0,0.0
+2021-Coordinated,City of Boulder Council Candidates (Vote For=5),Jacques Decalo,3899.0,9.0,3908.0,0.0
 2021-Coordinated,City of Lafayette City Council Candidates (Vote For=4),Nicole Samson,6592.0,43.0,6635.0,0.0
 2021-Coordinated,City of Lafayette City Council Candidates (Vote For=4),Enihs Medrano,5200.0,36.0,5236.0,0.0
 2021-Coordinated,City of Lafayette City Council Candidates (Vote For=4),Tonya Briggs,5284.0,41.0,5325.0,0.0
@@ -176,6 +179,7 @@ election_key,contest,choice,cvr_marks,aggregate_marks,sov_votes,delta
 2022-General,Representative to the 118th United States Congress - District 2 (Vote For=1),Steve Yurash,1166.0,24.0,1190.0,0.0
 2022-General,Governor/Lieutenant Governor (Vote For=1),Heidi Ganahl / Danny Moore,29377.0,1077.0,30454.0,0.0
 2022-General,Governor/Lieutenant Governor (Vote For=1),Jared Polis / Dianne Primavera,128522.0,3651.0,132173.0,0.0
+2022-General,Governor/Lieutenant Governor (Vote For=1),Paul Noël Fiorino / Cynthia Munhos de Aquino Sirianni,429.0,17.0,446.0,0.0
 2022-General,Governor/Lieutenant Governor (Vote For=1),Danielle Neuschwanger / Darryl Gibbs,508.0,19.0,527.0,0.0
 2022-General,Governor/Lieutenant Governor (Vote For=1),Kevin Ruskusky / Michele Poague,1423.0,53.0,1476.0,0.0
 2022-General,Secretary of State (Vote For=1),Pam Anderson,33403.0,1168.0,34571.0,0.0
@@ -314,6 +318,7 @@ election_key,contest,choice,cvr_marks,aggregate_marks,sov_votes,delta
 2023-Coordinated,Boulder Valley School District RE-2 Director District D (4 Years) (Vote For=1),Lalenia Quinlan Aweida,30680.0,264.0,30944.0,0.0
 2023-Coordinated,Boulder Valley School District RE-2 Director District G (4 Years) (Vote For=1),Anil Kiran Pesaramelli,7246.0,88.0,7334.0,0.0
 2023-Coordinated,Boulder Valley School District RE-2 Director District G (4 Years) (Vote For=1),Stuart Lord,13119.0,112.0,13231.0,0.0
+2023-Coordinated,Boulder Valley School District RE-2 Director District G (4 Years) (Vote For=1),Jorge Chávez,33483.0,233.0,33716.0,0.0
 2023-Coordinated,Estes Park School District R-3 School Board Director At Large (4 Year) (Vote For=2),Kevin G. Morris,43.0,12.0,55.0,0.0
 2023-Coordinated,Estes Park School District R-3 School Board Director At Large (4 Year) (Vote For=2),Kyri Cox,49.0,10.0,59.0,0.0
 2023-Coordinated,Estes Park School District R-3 School Board Director At Large (4 Year) (Vote For=2),Brenda L. Wyss,110.0,21.0,131.0,0.0

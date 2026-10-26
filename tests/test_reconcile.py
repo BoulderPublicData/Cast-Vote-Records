@@ -22,13 +22,13 @@ def staged(tmp_path: Path, minimal_cvr_path: Path, monkeypatch):
     audit = tmp_path / "audit"
     orig.mkdir()
     shutil.copy(minimal_cvr_path, orig / "2023-Coordinated-CVR.xlsx")
-    for mod in (config_mod, clean_mod, rec_mod):
-        monkeypatch.setattr(mod, "ORIGINAL_DIR", orig, raising=False)
-        monkeypatch.setattr(mod, "PROCESSED_DIR", proc, raising=False)
-        monkeypatch.setattr(mod, "AUDIT_DIR", audit, raising=False)
+    monkeypatch.setattr(config_mod, "ORIGINAL_DIR", orig)
+    monkeypatch.setattr(config_mod, "PROCESSED_DIR", proc)
+    monkeypatch.setattr(config_mod, "AUDIT_DIR", audit)
     monkeypatch.setattr(config_mod, "LOOKUPS_DIR", tmp_path / "lookups")
-    monkeypatch.setattr(clean_mod, "SUMMARY_CSV", proc / "_summary.csv")
-    monkeypatch.setattr(clean_mod, "PROVENANCE_CSV", proc / "provenance.csv")
+    monkeypatch.setattr(config_mod, "ORIGINAL_MANIFEST", orig / "manifest.json")
+    monkeypatch.setattr(config_mod, "SUMMARY_CSV", proc / "_summary.csv")
+    monkeypatch.setattr(config_mod, "PROVENANCE_CSV", proc / "provenance.csv")
     clean_mod.clean(elections=["2023-Coordinated"], verbose=False)
     return proc, audit
 
