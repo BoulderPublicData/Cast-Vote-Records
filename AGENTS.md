@@ -30,6 +30,33 @@ uv run jupyter nbconvert --to notebook --execute --inplace clusters.ipynb
 
 The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clean|audit|reconcile|publish|list}`. Shared options (`-q`, `-e/--election 2024-general`, `--year 2024`, `--force`, `--fail-on-empty`, `--update-manifest`) work before or after the subcommand; one the subcommand doesn't use is an error.
 
+## Checks by change type
+
+Run the cheapest check that can catch a mistake in what you changed, and say in the PR which one you ran. A full notebook run proves nothing about a docs edit and costs half an hour; skipping `reconcile` after a cleaner change can ship wrong counts.
+
+| Change touches | Run | Time |
+|---|---|---|
+| docs, comments, recipes, CI config | `ruff check .`, `pytest` | < 1 min |
+| `scripts/` other than the loader, cleaner and sources | + `pipeline reconcile` | ~3 min |
+| `loader.py`, `cleaner.py`, `sources.py`, `data/original/` | + full `pipeline` (or `clean -e <key>` while iterating, ~15 s–3 min per election), then `reconcile --sov …` | ~15 min |
+| paths, keys or file names only (renames) | + the notebook's load and write cells on the new paths (smoke test) | ~2 min |
+| cluster inputs, `clusters.ipynb` logic, UMAP/HDBSCAN parameters | + one full `nbconvert --execute`; a second run only to prove reproducibility after changing seeds or parameters | 20–30 min |
+
+The per-voter CSVs should come out byte-identical whenever a change isn't meant to move counts; compare hashes before and after rather than re-reading the data.
+
+## Long runs
+
+The full pipeline (~15 min) and `clusters.ipynb` (20–30 min) rewrite tracked files as they go. If a commit-on-stop hook or file watcher is active, don't run them inside the working tree. Run them against a copy and commit once at the end, so a half-finished `data/` is never committed and new facts arriving mid-run don't force a restart:
+
+```bash
+mkdir -p /tmp/cvr && cp -r data /tmp/cvr/
+CVR_DATA_DIR=/tmp/cvr/data uv run python -m scripts.pipeline
+CVR_DATA_DIR=/tmp/cvr/data uv run jupyter nbconvert --to notebook --execute --inplace clusters.ipynb
+cp -r /tmp/cvr/data/. data/ && git add data && git commit
+```
+
+`CVR_DATA_DIR` moves every path in `scripts/config.py`, and the notebook reads it too. Provenance still records `data/...` paths. Run `git lfs pull` first: a checkout made with LFS smudging off leaves pointer files, and the copy inherits them.
+
 ## Layout
 
 | Path | Responsibility |

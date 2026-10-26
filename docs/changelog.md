@@ -2,6 +2,11 @@
 
 Per-vintage notes on the underlying CVR files and any pipeline changes required to handle them.
 
+## Long runs outside the working tree; checks by change type
+
+* **`CVR_DATA_DIR`** points every path in `scripts/config.py`, and `clusters.ipynb`, at a copy of `data/`, so the 15-minute pipeline and the 20–30 minute notebook can run outside the repo and be committed once. Provenance still records `data/...` paths. From the 2026-10-26 AAR (P0-1).
+* **AGENTS.md** gains "Checks by change type" (which check each kind of change needs, with run times) and "Long runs" (P0-2, P0-1).
+
 ## Provenance and CI: County source pages, posted dates, cheaper reconcile
 
 * **Source pages.** `sources.py` records each public CVR's `source_page` on [bouldercounty.gov/elections/by-year](https://bouldercounty.gov/elections/by-year/). The 2023, 2024 Primary, 2024 General and 2025 files were downloaded again on 2026-10-26 and are byte-identical to the committed originals. The manifest and `provenance.csv` now have `retrieved_at` for them and a new `source_last_modified` (the server's `Last-Modified`, i.e. when the County posted the file): 2023-11-30, 2024-07-22, 2025-01-07 and 2025-12-02. The 2019–2022 pages list no CVR, so those stay CORA-only; they now record their CORA request (C000518-121923) and release date (`obtained_at` = 2023-12-19).
