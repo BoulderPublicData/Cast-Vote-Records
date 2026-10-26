@@ -22,6 +22,7 @@ The pragmatic choice: avoid a Source ABC layer (a single source doesn't warrant 
 git lfs pull                          # the originals and processed CSVs are LFS objects
 uv sync --all-extras                  # core + analysis + publish extras + dev group (pytest, ruff)
 uv run ruff check .
+uv run ruff format --check .           # CI enforces formatting; `ruff format .` fixes it
 uv run pytest                         # a few seconds; synthetic fixtures only
 uv run python -m scripts.pipeline     # fetch (verify hashes) → clean → audit
 uv run python -m scripts.pipeline reconcile [--sov ../Election-Results/data/processed/statements-of-votes]
@@ -36,7 +37,7 @@ Run the cheapest check that can catch a mistake in what you changed, and say in 
 
 | Change touches | Run | Time |
 |---|---|---|
-| docs, comments, recipes, CI config | `ruff check .`, `pytest` | < 1 min |
+| docs, comments, recipes, CI config | `ruff check .`, `ruff format --check .`, `pytest` | < 1 min |
 | `scripts/` other than the loader, cleaner and sources | + `pipeline reconcile` | ~3 min |
 | `loader.py`, `cleaner.py`, `sources.py`, `data/original/` | + full `pipeline` (or `clean -e <key>` while iterating, ~15 s–3 min per election), then `reconcile --sov …` | ~15 min |
 | paths, keys or file names only (renames) | + the notebook's load and write cells on the new paths (smoke test) | ~2 min |
