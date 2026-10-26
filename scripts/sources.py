@@ -10,17 +10,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+ELECTION_TYPES: tuple[str, ...] = ("general", "primary", "coordinated")
+"""Shared election-type vocabulary with Election-Results."""
+
 
 @dataclass(frozen=True)
 class CvrSource:
     """One election's CVR file and provenance."""
 
     election_key: str
-    """Slug used in output filenames (e.g. ``2023-Coordinated``)."""
+    """``{year}-{election_type}``, lowercase (e.g. ``2023-coordinated``): the
+    same key format as BoulderPublicData/Election-Results. Used in output
+    filenames, ``_summary.csv``/``provenance.csv`` and the CLI ``-e`` flag."""
 
     year: int
     election_type: str
-    """``'Coordinated'`` (odd-year, municipal) or ``'General'`` / ``'Primary'``."""
+    """One of :data:`ELECTION_TYPES`: ``coordinated`` (odd-year, municipal),
+    ``general`` or ``primary``."""
 
     filename: str
     """Filename inside ``data/original/`` (not a path)."""
@@ -66,37 +72,37 @@ ARCHIVED_ORIGINALS: tuple[ArchivedOriginal, ...] = (
 
 SOURCES: tuple[CvrSource, ...] = (
     CvrSource(
-        "2019-Coordinated", 2019, "Coordinated",
+        "2019-coordinated", 2019, "coordinated",
         "2019-CVR.xlsx",
         public_url=None,
         notes="CORA disclosure; not on bouldercounty.gov by-year pages.",
     ),
     CvrSource(
-        "2020-General", 2020, "General",
+        "2020-general", 2020, "general",
         "2020-CVR.xlsx",
         public_url=None,
         notes="CORA disclosure; not on bouldercounty.gov by-year pages.",
     ),
     CvrSource(
-        "2021-Coordinated", 2021, "Coordinated",
+        "2021-coordinated", 2021, "coordinated",
         "2021-CVR.xlsx",
         public_url=None,
         notes="CORA disclosure; not on bouldercounty.gov by-year pages.",
     ),
     CvrSource(
-        "2022-General", 2022, "General",
+        "2022-general", 2022, "general",
         "2022-CVR.xlsx",
         public_url=None,
         notes="CORA disclosure; not on bouldercounty.gov by-year pages.",
     ),
     CvrSource(
-        "2023-Coordinated", 2023, "Coordinated",
+        "2023-coordinated", 2023, "coordinated",
         "2023-Coordinated-CVR.xlsx",
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx",
         notes="First publicly posted Boulder County CVR.",
     ),
     CvrSource(
-        "2024-Primary", 2024, "Primary",
+        "2024-primary", 2024, "primary",
         "2024-Primary-CVR.xlsx",
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx",
         notes=(
@@ -105,7 +111,7 @@ SOURCES: tuple[CvrSource, ...] = (
         ),
     ),
     CvrSource(
-        "2024-General", 2024, "General",
+        "2024-general", 2024, "general",
         "2024-General-CVR.xlsx",
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx",
         notes=(
@@ -117,7 +123,7 @@ SOURCES: tuple[CvrSource, ...] = (
         ),
     ),
     CvrSource(
-        "2025-Coordinated", 2025, "Coordinated",
+        "2025-coordinated", 2025, "coordinated",
         "2025-Coordinated-CVR.xlsx",
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx",
         notes="",
@@ -126,8 +132,21 @@ SOURCES: tuple[CvrSource, ...] = (
 
 
 def get_source(election_key: str) -> CvrSource:
-    """Return the :class:`CvrSource` for ``election_key`` or raise ``KeyError``."""
+    """Return the :class:`CvrSource` for ``election_key`` or raise ``KeyError``.
+
+    An old-style key (``2024-General``) raises with a hint naming the new one.
+    """
     for src in SOURCES:
         if src.election_key == election_key:
             return src
-    raise KeyError(election_key)
+    lowered = election_key.lower()
+    if any(src.election_key == lowered for src in SOURCES):
+        raise KeyError(f"{election_key!r}: election keys are lowercase now; use {lowered!r}")
+    known = ", ".join(s.election_key for s in SOURCES)
+    raise KeyError(f"{election_key!r} is not a known election ({known})")
+
+
+def sources_for_years(years) -> tuple[CvrSource, ...]:
+    """Every source whose ``year`` is in ``years``."""
+    years = {int(y) for y in years}
+    return tuple(s for s in SOURCES if s.year in years)

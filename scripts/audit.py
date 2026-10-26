@@ -1,6 +1,6 @@
 """Auto-generated audit report — summary stats per processed CSV.
 
-Reads every ``data/processed/<election>-county-wide-by-voter.csv``, computes
+Reads every ``data/processed/cast-vote-records/<election>-county-wide-by-voter.csv``, computes
 basic shape / dtype / null / cardinality stats, and writes a Markdown
 report to ``data/audit/summary-<YYYYMMDD-HHMMSS>.md`` plus a stable
 ``data/audit/summary.md`` (the latest report).
@@ -19,12 +19,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import AUDIT_DIR, DOCS_DIR, PROCESSED_DIR, SUMMARY_CSV, ensure_dirs
+from . import config
+from .config import AUDIT_DIR, DOCS_DIR, ensure_dirs
 from .schema import contest_columns, id_columns
 
 
 def _list_processed() -> list[Path]:
-    return sorted(PROCESSED_DIR.glob("*-county-wide-by-voter.csv"))
+    return sorted(config.CVR_DIR.glob("*-county-wide-by-voter.csv"))
 
 
 def _summarize_one(path: Path) -> dict:
@@ -45,7 +46,7 @@ def write_audit(verbose: bool = True) -> Path:
     files = _list_processed()
     if not files:
         raise SystemExit(
-            "no processed CSVs found in data/processed/; "
+            "no processed CSVs found in data/processed/cast-vote-records/; "
             "run `python -m scripts.clean` first"
         )
 
@@ -77,10 +78,10 @@ def write_audit(verbose: bool = True) -> Path:
         )
     lines.append("")
 
-    if SUMMARY_CSV.exists():
-        s = pd.read_csv(SUMMARY_CSV).set_index("election_key")
+    if config.SUMMARY_CSV.exists():
+        s = pd.read_csv(config.SUMMARY_CSV).set_index("election_key")
         lines.extend(_redaction_section(s))
-        lines.append("## Pipeline bookkeeping (`data/processed/_summary.csv`)")
+        lines.append("## Pipeline bookkeeping (`data/processed/cast-vote-records/_summary.csv`)")
         lines.append("")
         lines.append(s.to_markdown())
         lines.append("")

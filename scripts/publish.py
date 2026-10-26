@@ -24,7 +24,7 @@ try:
 except ImportError:
     sqlite_utils = None  # type: ignore
 
-from .config import PROCESSED_DIR, PROVENANCE_CSV, ensure_dirs
+from .config import CVR_DIR, PROCESSED_DIR, PROVENANCE_CSV, ensure_dirs
 
 DB_PATH = PROCESSED_DIR / "cast_vote_records.db"
 METADATA_PATH = PROCESSED_DIR / "metadata.yaml"
@@ -46,10 +46,10 @@ def build(verbose: bool = True):
         DB_PATH.unlink()
     db = sqlite_utils.Database(DB_PATH)
 
-    wide_csvs = sorted(PROCESSED_DIR.glob("*-county-wide-by-voter.csv"))
+    wide_csvs = sorted(CVR_DIR.glob("*-county-wide-by-voter.csv"))
     if not wide_csvs:
         raise SystemExit(
-            "no wide CSVs in data/processed/; run `python -m scripts.clean` first"
+            "no wide CSVs in data/processed/cast-vote-records/; run `python -m scripts.clean` first"
         )
 
     for csv in wide_csvs:

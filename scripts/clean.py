@@ -5,12 +5,12 @@ CSVs plus a project-wide provenance sidecar to ``data/processed/``.
 
 Outputs:
 
-* ``data/processed/<election_key>-county-wide-by-voter.csv`` — one per
+* ``data/processed/cast-vote-records/<election_key>-county-wide-by-voter.csv`` — one per
   election, one row per **voter** (multi-sheet ballots merged), all ballots
   in the county (no jurisdiction filter).
-* ``data/processed/provenance.csv`` — one row per processed artifact with
+* ``data/processed/cast-vote-records/provenance.csv`` — one row per processed artifact with
   source URL, retrieved-at time, SHA-256, output path, row counts.
-* ``data/processed/_summary.csv`` — bookkeeping (n raw, aggregate rows
+* ``data/processed/cast-vote-records/_summary.csv`` — bookkeeping (n raw, aggregate rows
   dropped, single-ballot redacted rows kept, n sheets, n voters, out-of-order
   merges, rare-fingerprint sheets, multi-sheet ballot types, sheet-count
   distribution).
@@ -40,11 +40,11 @@ from .config import ensure_dirs
 from .fetch import LfsPointerError, check_lfs_pointers, load_manifest
 from .loader import load_raw_cvr
 from .schema import validate_contest_columns, validate_id_block
-from .sources import SOURCES, get_source
+from .sources import SOURCES, get_source, sources_for_years
 
 
 def _wide_csv_path(election_key: str):
-    return config.PROCESSED_DIR / f"{election_key}-county-wide-by-voter.csv"
+    return config.CVR_DIR / f"{election_key}-county-wide-by-voter.csv"
 
 
 def upsert_csv(path, new_rows: pd.DataFrame, *, key: str = "election_key") -> pd.DataFrame:
@@ -73,6 +73,7 @@ def upsert_csv(path, new_rows: pd.DataFrame, *, key: str = "election_key") -> pd
 def clean(
     elections: Iterable[str] = (),
     *,
+    years: Iterable[int] = (),
     fail_on_empty: bool = False,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -94,10 +95,16 @@ def clean(
     """
     ensure_dirs()
     manifest = load_manifest()
-    targets = (
-        tuple(SOURCES) if not elections
-        else tuple(get_source(k) for k in elections)
-    )
+    elections, years = tuple(elections), tuple(years)
+    if not elections and not years:
+        targets = tuple(SOURCES)
+    else:
+        try:
+            chosen = {get_source(k).election_key for k in elections}
+        except KeyError as exc:
+            raise SystemExit(f"FAIL: {exc.args[0]}") from exc
+        chosen |= {s.election_key for s in sources_for_years(years)}
+        targets = tuple(s for s in SOURCES if s.election_key in chosen)
     try:
         check_lfs_pointers(config.ORIGINAL_DIR / s.filename for s in targets)
     except LfsPointerError as exc:
@@ -195,7 +202,7 @@ def clean(
             "first_committed_at":  manifest_entry.get("first_committed_at", ""),
             "original_xlsx_modified": manifest_entry.get("xlsx_modified", ""),
             "processed_path":      (
-                str(out_path.relative_to(config.PROCESSED_DIR.parent.parent))
+                str(out_path.relative_to(config.CVR_DIR.parent.parent.parent))
                 if res.n_voters else ""
             ),
             "extracted_at":        time.strftime(
@@ -234,12 +241,14 @@ def clean(
 def _main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="scripts.clean", description=__doc__)
     p.add_argument("--election", "-e", action="append", default=[],
-                   help="process only this election_key (repeatable)")
+                   help="process only this election_key, e.g. 2024-general (repeatable)")
+    p.add_argument("--year", action="append", type=int, default=[],
+                   help="process every election in this year (repeatable)")
     p.add_argument("--fail-on-empty", action="store_true",
                    help="exit non-zero if every output is empty")
     p.add_argument("--quiet", "-q", action="store_true")
     a = p.parse_args(argv)
-    clean(elections=a.election, fail_on_empty=a.fail_on_empty,
+    clean(elections=a.election, years=a.year, fail_on_empty=a.fail_on_empty,
           verbose=not a.quiet)
     return 0
 
