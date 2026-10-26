@@ -48,6 +48,12 @@ class CvrSource:
     manifest's ``first_committed_at`` is then the best available upper bound."""
 
 
+CORA_REQUEST = "C000518-121923"
+"""Boulder County Open Records Center request that released the 2019–2022 CVRs
+(and a 2018 Primary CSV not processed here) on 2023-12-19. It asked for the
+2018 General too; the County released the 2018 Primary instead."""
+
+
 @dataclass(frozen=True)
 class ArchivedOriginal:
     """A file kept in ``data/original/`` for provenance but not processed."""
@@ -80,36 +86,44 @@ SOURCES: tuple[CvrSource, ...] = (
         "2019-CVR.xlsx",
         public_url=None,
         notes=(
-            "CORA disclosure. The bouldercounty.gov by-year pages list no CVR "
-            "for 2019–2022 (checked 2026-10-26)."
+            "CORA request C000518-121923 (Boulder County Open Records Center), "
+            "released 2023-12-19 as 2019_Coordinated_Election_Public_CVR.xlsx. The bouldercounty.gov by-year pages "
+            "list no CVR for 2019–2022 (checked 2026-10-26)."
         ),
+        obtained_at="2023-12-19",
     ),
     CvrSource(
         "2020-general", 2020, "general",
         "2020-CVR.xlsx",
         public_url=None,
         notes=(
-            "CORA disclosure. The bouldercounty.gov by-year pages list no CVR "
-            "for 2019–2022 (checked 2026-10-26)."
+            "CORA request C000518-121923 (Boulder County Open Records Center), "
+            "released 2023-12-19 as 2020_General_Election_Public_CVR.xlsx. The bouldercounty.gov by-year pages "
+            "list no CVR for 2019–2022 (checked 2026-10-26)."
         ),
+        obtained_at="2023-12-19",
     ),
     CvrSource(
         "2021-coordinated", 2021, "coordinated",
         "2021-CVR.xlsx",
         public_url=None,
         notes=(
-            "CORA disclosure. The bouldercounty.gov by-year pages list no CVR "
-            "for 2019–2022 (checked 2026-10-26)."
+            "CORA request C000518-121923 (Boulder County Open Records Center), "
+            "released 2023-12-19 as 2021_Coordinated_Election_Public_CVR.xlsx. The bouldercounty.gov by-year pages "
+            "list no CVR for 2019–2022 (checked 2026-10-26)."
         ),
+        obtained_at="2023-12-19",
     ),
     CvrSource(
         "2022-general", 2022, "general",
         "2022-CVR.xlsx",
         public_url=None,
         notes=(
-            "CORA disclosure. The bouldercounty.gov by-year pages list no CVR "
-            "for 2019–2022 (checked 2026-10-26)."
+            "CORA request C000518-121923 (Boulder County Open Records Center), "
+            "released 2023-12-19 as 2022_General_Election_Public_CVR.xlsx. The bouldercounty.gov by-year pages "
+            "list no CVR for 2019–2022 (checked 2026-10-26)."
         ),
+        obtained_at="2023-12-19",
     ),
     CvrSource(
         "2023-coordinated", 2023, "coordinated",

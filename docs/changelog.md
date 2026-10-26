@@ -4,7 +4,7 @@ Per-vintage notes on the underlying CVR files and any pipeline changes required 
 
 ## Provenance and CI: County source pages, posted dates, cheaper reconcile
 
-* **Source pages.** `sources.py` records each public CVR's `source_page` on [bouldercounty.gov/elections/by-year](https://bouldercounty.gov/elections/by-year/). The 2023, 2024 Primary, 2024 General and 2025 files were downloaded again on 2026-10-26 and are byte-identical to the committed originals. The manifest and `provenance.csv` now have `retrieved_at` for them and a new `source_last_modified` (the server's `Last-Modified`, i.e. when the County posted the file): 2023-11-30, 2024-07-22, 2025-01-07 and 2025-12-02. The 2019–2022 pages list no CVR, so those stay CORA-only.
+* **Source pages.** `sources.py` records each public CVR's `source_page` on [bouldercounty.gov/elections/by-year](https://bouldercounty.gov/elections/by-year/). The 2023, 2024 Primary, 2024 General and 2025 files were downloaded again on 2026-10-26 and are byte-identical to the committed originals. The manifest and `provenance.csv` now have `retrieved_at` for them and a new `source_last_modified` (the server's `Last-Modified`, i.e. when the County posted the file): 2023-11-30, 2024-07-22, 2025-01-07 and 2025-12-02. The 2019–2022 pages list no CVR, so those stay CORA-only; they now record their CORA request (C000518-121923) and release date (`obtained_at` = 2023-12-19).
 * **`fetch`** records `source_last_modified` on every download.
 * **Reconcile CI** moved to its own workflow (`reconcile.yml`). It runs only when data or pipeline code changes (or by hand), pulls only the LFS files it reads, and caches them, instead of downloading about 800 MB on every push and PR.
 
