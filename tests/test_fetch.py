@@ -31,7 +31,7 @@ def orig(tmp_path: Path, monkeypatch, minimal_cvr_path: Path) -> Path:
     monkeypatch.setattr(config_mod, "LOOKUPS_DIR", tmp_path / "lookups")
     monkeypatch.setattr(config_mod, "ORIGINAL_MANIFEST", d / "manifest.json")
     # Never touch the network: no source gets downloaded in these tests.
-    monkeypatch.setattr(fetch_mod, "download_one", lambda src, force=False: False)
+    monkeypatch.setattr(fetch_mod, "download_one", lambda src, force=False: None)
     return d
 
 
@@ -94,10 +94,20 @@ def test_download_records_retrieved_at(orig: Path, monkeypatch):
     def fake_download(src, force=False):
         if src.filename == "2025-Coordinated-CVR.xlsx":
             shutil.copy(orig / "2023-Coordinated-CVR.xlsx", orig / src.filename)
-            return True
-        return False
+            return {
+                "retrieved_at": fetch_mod._now(),
+                "source_last_modified": "2025-12-02T00:54:26Z",
+            }
+        return None
     monkeypatch.setattr(fetch_mod, "download_one", fake_download)
     monkeypatch.setattr(fetch_mod, "_now", lambda: "2026-10-26T00:00:00Z")
     out = fetch_mod.fetch(verbose=False)
     assert out["2025-Coordinated-CVR.xlsx"]["retrieved_at"] == "2026-10-26T00:00:00Z"
+    assert out["2025-Coordinated-CVR.xlsx"]["source_last_modified"] == "2025-12-02T00:54:26Z"
     assert out["2023-Coordinated-CVR.xlsx"]["retrieved_at"] == ""
+    assert out["2023-Coordinated-CVR.xlsx"]["source_last_modified"] == ""
+
+
+def test_http_date_to_iso():
+    assert fetch_mod._http_date_to_iso("Tue, 07 Jan 2025 02:19:25 GMT") == "2025-01-07T02:19:25Z"
+    assert fetch_mod._http_date_to_iso("") == ""

@@ -1,0 +1,93 @@
+name: reconcile
+
+# Re-derives every published count from the originals. Unlike `tests`, this
+# needs real Git LFS objects, so it is limited three ways to save LFS bandwidth:
+#   1. it runs only when the originals, the per-voter outputs or the pipeline
+#      code change (or by hand from the Actions tab);
+#   2. it pulls only the files reconcile reads: the processed originals and
+#      data/processed/cast-vote-records/ (not the clusters or the archived
+#      CORA copy of 2023), about 560 MB instead of about 700 MB;
+#   3. the LFS objects are cached, so a run whose files haven't changed
+#      downloads nothing from LFS.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/original/**"
+      - "data/processed/cast-vote-records/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".gitattributes"
+      - ".github/workflows/reconcile.yml"
+  pull_request:
+    paths:
+      - "data/original/**"
+      - "data/processed/cast-vote-records/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".gitattributes"
+      - ".github/workflows/reconcile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reconcile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LFS_INCLUDE: "data/original/**,data/processed/cast-vote-records/**"
+  LFS_EXCLUDE: "data/original/2023-CVR.xlsx"
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      - name: List the LFS objects reconcile needs
+        run: |
+          git lfs ls-files --long --include="$LFS_INCLUDE" --exclude="$LFS_EXCLUDE" \
+            | cut -d' ' -f1 | sort > .lfs-object-ids
+          wc -l < .lfs-object-ids
+
+      - name: Restore cached LFS objects
+        uses: actions/cache@v4
+        with:
+          path: .git/lfs/objects
+          key: lfs-${{ hashFiles('.lfs-object-ids') }}
+          restore-keys: lfs-
+
+      - name: Pull missing LFS objects
+        run: git lfs pull --include="$LFS_INCLUDE" --exclude="$LFS_EXCLUDE"
+
+      - name: Check out Election-Results for the SoV cross-check
+        uses: actions/checkout@v6
+        continue-on-error: true
+        with:
+          repository: BoulderPublicData/Election-Results
+          path: election-results
+          sparse-checkout: data/processed/statements-of-votes
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Sync deps
+        run: uv sync --frozen
+
+      - name: Reconcile
+        run: |
+          SOV=election-results/data/processed/statements-of-votes
+          if [ -d "$SOV" ]; then
+            uv run --frozen python -m scripts.pipeline reconcile --sov "$SOV"
+          else
+            uv run --frozen python -m scripts.pipeline reconcile
+          fi

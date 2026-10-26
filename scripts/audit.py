@@ -92,14 +92,15 @@ def write_audit(verbose: bool = True) -> Path:
     manifest = load_manifest()
     if manifest:
         lines.append(
-            "| File | SHA-256 (first 12) | size (MB) | retrieved | obtained (CORA) "
-            "| first committed | workbook saved |"
+            "| File | SHA-256 (first 12) | size (MB) | retrieved | posted by County "
+            "| obtained (CORA) | first committed | workbook saved |"
         )
-        lines.append("| --- | --- | ---: | --- | --- | --- | --- |")
+        lines.append("| --- | --- | ---: | --- | --- | --- | --- | --- |")
         for fname, info in sorted(manifest.items()):
             lines.append(
                 f"| `{fname}` | `{info['sha256'][:12]}` | "
                 f"{info['size']/1e6:.1f} | {info.get('retrieved_at', '')} | "
+                f"{info.get('source_last_modified', '')} | "
                 f"{info.get('obtained_at', '')} | {info.get('first_committed_at', '')} | "
                 f"{info.get('xlsx_modified', '')} |"
             )

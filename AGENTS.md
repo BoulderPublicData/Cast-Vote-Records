@@ -58,7 +58,8 @@ The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clea
 | `data/audit/` | Latest `summary.md` and `reconcile.md` (committed); per-run timestamped copies (gitignored) |
 | `data/lookups/` | Crosswalks / code systems (empty for now) |
 | `clusters.ipynb` | The McInnes two-pass UMAP + HDBSCAN small-multiples analysis |
-| `.github/workflows/tests.yml` | Always-on: ruff + pytest on Python 3.11–3.13; then a `reconcile` job with LFS checkout (and the Election-Results SoV cross-check when that repo is reachable) |
+| `.github/workflows/tests.yml` | Always-on: ruff + pytest on Python 3.11–3.13. No LFS objects. |
+| `.github/workflows/reconcile.yml` | `reconcile` (plus the Election-Results SoV cross-check when that repo is reachable). Runs only when `data/original/`, `data/processed/cast-vote-records/`, `scripts/`, `pyproject.toml`, `uv.lock` or `.gitattributes` change, or by hand (`workflow_dispatch`). Pulls only the LFS files reconcile reads (~560 MB, not the clusters or the archived CORA copy of 2023) and caches them, so an unchanged-data run downloads nothing from LFS. |
 | `.github/workflows/{refresh,publish,gh-pages}.yml.disabled` | Opt-in CI for scheduled refresh, Datasette deploy, Quarto site |
 
 ## Background: what a Cast Vote Record actually is

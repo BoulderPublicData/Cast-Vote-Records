@@ -16,8 +16,11 @@ Manifest fields per file:
 ``sha256`` / ``size``
     Content hash and byte count.
 ``retrieved_at``
-    UTC time ``fetch`` downloaded the file. Blank when the file was placed by
-    hand or predates this field (see ``first_committed_at``).
+    UTC time the file was downloaded from its ``public_url`` (by ``fetch``, or
+    by hand and checked byte-identical). Blank for CORA files.
+``source_last_modified``
+    The County server's ``Last-Modified`` header for ``public_url`` at
+    retrieval, i.e. when the County posted this version.
 ``obtained_at``
     For CORA disclosures: the hand-entered date the County released the file
     (from :data:`scripts.sources.SOURCES`). Blank when unknown.
@@ -40,6 +43,7 @@ import re
 import sys
 import time
 import zipfile
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import requests
@@ -125,7 +129,7 @@ def _original_files() -> list[Path]:
 def verify_manifest(
     manifest: dict[str, dict],
     *,
-    downloaded: dict[str, str] | None = None,
+    downloaded: dict[str, dict[str, str]] | None = None,
     update: bool = False,
 ) -> tuple[dict[str, dict], list[str]]:
     """Check every file in ``data/original/`` against ``manifest``.
@@ -135,7 +139,8 @@ def verify_manifest(
     manifest
         The current manifest (not modified).
     downloaded
-        ``{relative name: retrieved_at}`` for files this run downloaded.
+        ``{relative name: {"retrieved_at": ..., "source_last_modified": ...}}``
+        for files this run downloaded.
     update
         Accept hash changes (record the new hash) instead of reporting them.
 
@@ -167,8 +172,9 @@ def verify_manifest(
         entry.update({"sha256": digest, "size": p.stat().st_size})
         entry.update(xlsx_timestamps(p))
         if rel in downloaded:
-            entry["retrieved_at"] = downloaded[rel]
+            entry.update(downloaded[rel])
         entry.setdefault("retrieved_at", "")
+        entry.setdefault("source_last_modified", "")
         if obtained.get(rel):
             entry["obtained_at"] = obtained[rel]
         entry.setdefault("obtained_at", "")
@@ -177,10 +183,11 @@ def verify_manifest(
     return new, problems
 
 
-def download_one(src, *, force: bool = False) -> bool:
+def download_one(src, *, force: bool = False) -> dict[str, str] | None:
     """Download ``src.public_url`` to ``data/original/<src.filename>`` if missing.
 
-    Returns ``True`` if a new download happened, ``False`` if skipped.
+    Returns the manifest fields to record (``retrieved_at``,
+    ``source_last_modified``) if a new download happened, ``None`` if skipped.
     """
     dest = config.ORIGINAL_DIR / src.filename
     if src.public_url is None:
@@ -190,10 +197,10 @@ def download_one(src, *, force: bool = False) -> bool:
                 f"at {dest}. Place the CORA disclosure here manually.",
                 file=sys.stderr,
             )
-        return False
+        return None
 
     if dest.exists() and not force:
-        return False
+        return None
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"  fetching {src.election_key} from {src.public_url}", flush=True)
@@ -201,7 +208,17 @@ def download_one(src, *, force: bool = False) -> bool:
     r.raise_for_status()
     dest.write_bytes(r.content)
     print(f"  saved {dest} ({dest.stat().st_size/1e6:.1f} MB)", flush=True)
-    return True
+    return {
+        "retrieved_at": _now(),
+        "source_last_modified": _http_date_to_iso(r.headers.get("Last-Modified", "")),
+    }
+
+
+def _http_date_to_iso(value: str) -> str:
+    """``Tue, 07 Jan 2025 02:19:25 GMT`` → ``2025-01-07T02:19:25Z`` ("" if absent)."""
+    if not value:
+        return ""
+    return parsedate_to_datetime(value).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def fetch(
@@ -222,10 +239,11 @@ def fetch(
 
     if verbose:
         print("Boulder County redacted Cast Vote Records:")
-    downloaded: dict[str, str] = {}
+    downloaded: dict[str, dict[str, str]] = {}
     for src in SOURCES:
-        if download_one(src, force=force):
-            downloaded[src.filename] = _now()
+        fields = download_one(src, force=force)
+        if fields:
+            downloaded[src.filename] = fields
 
     manifest, problems = verify_manifest(
         load_manifest(), downloaded=downloaded, update=update_manifest,

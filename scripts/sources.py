@@ -36,12 +36,22 @@ class CvrSource:
     posted this CVR publicly; ``None`` if the file came from a Colorado Open
     Records Act (CORA) disclosure and is not on the County website."""
 
+    source_page: str | None = None
+    """The County's ``bouldercounty.gov/elections/by-year/<year>-election/``
+    page that links ``public_url``; ``None`` for CORA files."""
+
     notes: str = ""
 
     obtained_at: str = ""
     """For CORA disclosures: the date the County released the file, entered by
     hand from the CORA response (ISO 8601). Blank when not recorded; the
     manifest's ``first_committed_at`` is then the best available upper bound."""
+
+
+CORA_REQUEST = "C000518-121923"
+"""Boulder County Open Records Center request that released the 2019–2022 CVRs
+(and a 2018 Primary CSV not processed here) on 2023-12-19. It asked for the
+2018 General too; the County released the 2018 Primary instead."""
 
 
 @dataclass(frozen=True)
@@ -75,36 +85,58 @@ SOURCES: tuple[CvrSource, ...] = (
         "2019-coordinated", 2019, "coordinated",
         "2019-CVR.xlsx",
         public_url=None,
-        notes="CORA disclosure; not on bouldercounty.gov by-year pages.",
+        notes=(
+            "CORA request C000518-121923 (Boulder County Open Records Center), "
+            "released 2023-12-19 as 2019_Coordinated_Election_Public_CVR.xlsx. The bouldercounty.gov by-year pages "
+            "list no CVR for 2019–2022 (checked 2026-10-26)."
+        ),
+        obtained_at="2023-12-19",
     ),
     CvrSource(
         "2020-general", 2020, "general",
         "2020-CVR.xlsx",
         public_url=None,
-        notes="CORA disclosure; not on bouldercounty.gov by-year pages.",
+        notes=(
+            "CORA request C000518-121923 (Boulder County Open Records Center), "
+            "released 2023-12-19 as 2020_General_Election_Public_CVR.xlsx. The bouldercounty.gov by-year pages "
+            "list no CVR for 2019–2022 (checked 2026-10-26)."
+        ),
+        obtained_at="2023-12-19",
     ),
     CvrSource(
         "2021-coordinated", 2021, "coordinated",
         "2021-CVR.xlsx",
         public_url=None,
-        notes="CORA disclosure; not on bouldercounty.gov by-year pages.",
+        notes=(
+            "CORA request C000518-121923 (Boulder County Open Records Center), "
+            "released 2023-12-19 as 2021_Coordinated_Election_Public_CVR.xlsx. The bouldercounty.gov by-year pages "
+            "list no CVR for 2019–2022 (checked 2026-10-26)."
+        ),
+        obtained_at="2023-12-19",
     ),
     CvrSource(
         "2022-general", 2022, "general",
         "2022-CVR.xlsx",
         public_url=None,
-        notes="CORA disclosure; not on bouldercounty.gov by-year pages.",
+        notes=(
+            "CORA request C000518-121923 (Boulder County Open Records Center), "
+            "released 2023-12-19 as 2022_General_Election_Public_CVR.xlsx. The bouldercounty.gov by-year pages "
+            "list no CVR for 2019–2022 (checked 2026-10-26)."
+        ),
+        obtained_at="2023-12-19",
     ),
     CvrSource(
         "2023-coordinated", 2023, "coordinated",
         "2023-Coordinated-CVR.xlsx",
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx",
+        source_page="https://bouldercounty.gov/elections/by-year/2023-election/",
         notes="First publicly posted Boulder County CVR.",
     ),
     CvrSource(
         "2024-primary", 2024, "primary",
         "2024-Primary-CVR.xlsx",
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx",
+        source_page="https://bouldercounty.gov/elections/by-year/2024-election/",
         notes=(
             "Partisan state primary; no City of Boulder contests (City-level "
             "analyses skip it). Countywide rows retained."
@@ -114,6 +146,7 @@ SOURCES: tuple[CvrSource, ...] = (
         "2024-general", 2024, "general",
         "2024-General-CVR.xlsx",
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx",
+        source_page="https://bouldercounty.gov/elections/by-year/2024-election/",
         notes=(
             "Pre-recount version. In NIST CDF terms (SP 1500-103 §3.3) this is "
             "the *interpreted* snapshot; the County also published a separate "
@@ -126,6 +159,7 @@ SOURCES: tuple[CvrSource, ...] = (
         "2025-coordinated", 2025, "coordinated",
         "2025-Coordinated-CVR.xlsx",
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx",
+        source_page="https://bouldercounty.gov/elections/by-year/2025-election/",
         notes="",
     ),
 )
