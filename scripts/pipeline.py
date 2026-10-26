@@ -11,7 +11,8 @@ subcommands expose individual phases.
     python -m scripts.pipeline publish build  # build Datasette SQLite (opt-in)
     python -m scripts.pipeline list           # list known elections
 
-Shared options (``-q``, ``-e``, ``--force``, ``--fail-on-empty``,
+Shared options (``-q``, ``-e``/``--election`` with lowercase keys such as
+``2024-general``, ``--year``, ``--force``, ``--fail-on-empty``,
 ``--update-manifest``) work before or after the subcommand
 (``pipeline -q clean`` and ``pipeline clean -q`` are the same). An option a
 subcommand does not use is an error rather than silently ignored.
@@ -31,20 +32,20 @@ from .sources import SOURCES
 
 # Which shared options each command honours (None = the full run).
 _USES = {
-    None:        {"quiet", "election", "fail_on_empty", "force", "update_manifest"},
+    None:        {"quiet", "election", "year", "fail_on_empty", "force", "update_manifest"},
     "fetch":     {"quiet", "force", "update_manifest"},
-    "clean":     {"quiet", "election", "fail_on_empty"},
+    "clean":     {"quiet", "election", "year", "fail_on_empty"},
     "audit":     {"quiet"},
     "reconcile": {"quiet"},
     "publish":   {"quiet"},
     "list":      set(),
 }
 _DEFAULTS = {
-    "quiet": False, "election": [], "fail_on_empty": False,
+    "quiet": False, "election": [], "year": [], "fail_on_empty": False,
     "force": False, "update_manifest": False,
 }
 _FLAGS = {
-    "quiet": "-q/--quiet", "election": "-e/--election",
+    "quiet": "-q/--quiet", "election": "-e/--election", "year": "--year",
     "fail_on_empty": "--fail-on-empty", "force": "--force",
     "update_manifest": "--update-manifest",
 }
@@ -56,7 +57,9 @@ def _common_parser() -> argparse.ArgumentParser:
     c = argparse.ArgumentParser(add_help=False)
     c.add_argument("--quiet", "-q", action="store_true", default=argparse.SUPPRESS)
     c.add_argument("--election", "-e", action="append", default=argparse.SUPPRESS,
-                   help="process only this election_key (repeatable)")
+                   help="process only this election_key, e.g. 2024-general (repeatable)")
+    c.add_argument("--year", action="append", type=int, default=argparse.SUPPRESS,
+                   help="process every election in this year (repeatable; as in Election-Results)")
     c.add_argument("--fail-on-empty", action="store_true", default=argparse.SUPPRESS,
                    help="exit non-zero if every output is empty")
     c.add_argument("--force", action="store_true", default=argparse.SUPPRESS,
@@ -78,7 +81,8 @@ def _list(_: argparse.Namespace) -> int:
 
 def _full_run(a: argparse.Namespace) -> int:
     fetch(force=a.force, update_manifest=a.update_manifest, verbose=not a.quiet)
-    clean(elections=a.election, fail_on_empty=a.fail_on_empty, verbose=not a.quiet)
+    clean(elections=a.election, years=a.year, fail_on_empty=a.fail_on_empty,
+          verbose=not a.quiet)
     write_audit(verbose=not a.quiet)
     return 0
 
@@ -103,8 +107,8 @@ def _build_parser() -> argparse.ArgumentParser:
         func=lambda a: (fetch(force=a.force, update_manifest=a.update_manifest,
                               verbose=not a.quiet), 0)[1])
     sub.add_parser("clean", parents=[common], help="split redaction + merge → CSVs").set_defaults(
-        func=lambda a: (clean(elections=a.election, fail_on_empty=a.fail_on_empty,
-                              verbose=not a.quiet), 0)[1])
+        func=lambda a: (clean(elections=a.election, years=a.year,
+                              fail_on_empty=a.fail_on_empty, verbose=not a.quiet), 0)[1])
     sub.add_parser("audit", parents=[common],
                    help="summary stats + variables report").set_defaults(
         func=lambda a: (write_audit(verbose=not a.quiet), 0)[1])

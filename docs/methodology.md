@@ -1,6 +1,6 @@
 # Methodology
 
-How the wide CSVs in ``data/processed/`` are derived from the redacted xlsx files in ``data/original/``.
+How the wide CSVs in ``data/processed/cast-vote-records/`` are derived from the redacted xlsx files in ``data/original/``.
 
 ## Sources
 
@@ -43,7 +43,7 @@ data/original/*.xlsx
         ├── integrity checks (required columns; Σ n_sheets = sheets kept)
         └── flatten columns to "_ID/<label>" + "<contest>::<choice>"
     └── scripts.schema: validate_id_block + validate_contest_columns
-    └── data/processed/<election>-county-wide-by-voter.csv
+    └── data/processed/cast-vote-records/<election>-county-wide-by-voter.csv
 ```
 
 The orchestrator is `scripts.clean.clean`. The CLI driver is `python -m scripts.pipeline`. Jurisdiction filtering (City of Boulder, Longmont, etc.) is done downstream in the analysis layer — see `scripts.cleaner.detect_city_ballot_types` for the helper.
@@ -112,7 +112,7 @@ Dominion's XLSX columns map cleanly to the NIST Common Data Format (SP 1500-103)
 
 Anyone can clone the repository, run `git lfs pull` and `uv sync`, and regenerate every wide CSV with `uv run python -m scripts.pipeline`. Dependencies are pinned in `uv.lock`; `requirements.txt` is exported from it (`uv export --frozen --no-hashes --no-dev --extra analysis --extra publish -o requirements.txt`). The pipeline output is deterministic given the same inputs.
 
-The cluster outputs are reproducible too. `clusters.ipynb` seeds both UMAP runs (`random_state=42`), recomputes every election on each run (no cross-run cache), and is executed top to bottom before commit. `data/processed/cluster-provenance.csv` records, for each derived file, the input CSV's SHA-256, the output's SHA-256, the seed and parameters, and the Python and package versions.
+The cluster outputs are reproducible too. `clusters.ipynb` seeds both UMAP runs (`random_state=42`), recomputes every election on each run (no cross-run cache), and is executed top to bottom before commit. `data/processed/clusters/provenance.csv` records, for each derived file, the input CSV's SHA-256, the output's SHA-256, the seed and parameters, and the Python and package versions.
 
 ## Limitations
 

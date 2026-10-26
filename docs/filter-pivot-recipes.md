@@ -1,6 +1,6 @@
 # Filter and pivot recipes
 
-The wide CSVs in ``data/processed/`` (`<election>-county-wide-by-voter.csv`) have one row per **voter** (all of that voter's ballot sheets merged) and one column per contest-choice. Every file is **countywide**, so filter to a jurisdiction yourself (below). These recipes show how to slice and reshape them.
+The wide CSVs in ``data/processed/cast-vote-records/`` (`<election>-county-wide-by-voter.csv`, where `<election>` is a lowercase key such as `2024-general`) have one row per **voter** (all of that voter's ballot sheets merged) and one column per contest-choice. Every file is **countywide**, so filter to a jurisdiction yourself (below). These recipes show how to slice and reshape them.
 
 Two typing notes for every recipe:
 
@@ -13,7 +13,7 @@ Two typing notes for every recipe:
 
 ```python
 import pandas as pd
-df = pd.read_csv("data/processed/2023-Coordinated-county-wide-by-voter.csv",
+df = pd.read_csv("data/processed/cast-vote-records/2023-coordinated-county-wide-by-voter.csv",
                  dtype={"_ID/BallotType": str}, low_memory=False)
 df.shape
 ```
@@ -22,7 +22,7 @@ df.shape
 
 ```r
 library(readr)
-df <- read_csv("data/processed/2023-Coordinated-county-wide-by-voter.csv",
+df <- read_csv("data/processed/cast-vote-records/2023-coordinated-county-wide-by-voter.csv",
                col_types = cols(`_ID/BallotType` = col_character()),
                show_col_types = FALSE)
 ```
@@ -30,7 +30,7 @@ df <- read_csv("data/processed/2023-Coordinated-county-wide-by-voter.csv",
 ### DuckDB
 
 ```sql
-SELECT * FROM read_csv('data/processed/2023-Coordinated-county-wide-by-voter.csv',
+SELECT * FROM read_csv('data/processed/cast-vote-records/2023-coordinated-county-wide-by-voter.csv',
                        types = {'_ID/BallotType': 'VARCHAR'}) LIMIT 5;
 ```
 
@@ -113,7 +113,7 @@ long <- df |>
 ```python
 from pathlib import Path
 frames = []
-for path in sorted(Path("data/processed").glob("*-county-wide-by-voter.csv")):
+for path in sorted(Path("data/processed/cast-vote-records").glob("*-county-wide-by-voter.csv")):
     election = path.name.removesuffix("-county-wide-by-voter.csv")
     df = pd.read_csv(path, dtype={"_ID/BallotType": str}, low_memory=False)
     id_cols     = [c for c in df.columns if c.startswith("_ID/")]
@@ -142,7 +142,7 @@ A contest-level undervote is a voter whose cells for that contest are **all** `0
 ## Join cluster labels
 
 ```python
-clusters = pd.read_csv("data/processed/2023-Coordinated-ballots-with-clusters.csv",
+clusters = pd.read_csv("data/processed/clusters/2023-coordinated-ballots-with-clusters.csv",
                        usecols=["_ID/voter_id", "cluster"])
 df = df.merge(clusters, on="_ID/voter_id", how="left")   # NaN cluster = not clustered
 ```

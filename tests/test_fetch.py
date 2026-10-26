@@ -26,6 +26,7 @@ def orig(tmp_path: Path, monkeypatch, minimal_cvr_path: Path) -> Path:
     shutil.copy(minimal_cvr_path, d / "2023-Coordinated-CVR.xlsx")
     monkeypatch.setattr(config_mod, "ORIGINAL_DIR", d)
     monkeypatch.setattr(config_mod, "PROCESSED_DIR", tmp_path / "processed")
+    monkeypatch.setattr(config_mod, "CVR_DIR", tmp_path / "processed" / "cast-vote-records")
     monkeypatch.setattr(config_mod, "AUDIT_DIR", tmp_path / "audit")
     monkeypatch.setattr(config_mod, "LOOKUPS_DIR", tmp_path / "lookups")
     monkeypatch.setattr(config_mod, "ORIGINAL_MANIFEST", d / "manifest.json")

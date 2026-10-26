@@ -21,20 +21,20 @@ def test_defaults_are_filled():
 
 
 def test_election_either_side():
-    assert parse_args(["-e", "2024-General", "clean"]).election == ["2024-General"]
-    assert parse_args(["clean", "-e", "2024-General", "-e", "2025-Coordinated"]).election == [
-        "2024-General", "2025-Coordinated",
+    assert parse_args(["-e", "2024-general", "clean"]).election == ["2024-general"]
+    assert parse_args(["clean", "-e", "2024-general", "-e", "2025-coordinated"]).election == [
+        "2024-general", "2025-coordinated",
     ]
 
 
 def test_full_run_takes_shared_options():
-    a = parse_args(["-q", "--force", "-e", "2024-General"])
-    assert a.cmd is None and a.quiet and a.force and a.election == ["2024-General"]
+    a = parse_args(["-q", "--force", "-e", "2024-general"])
+    assert a.cmd is None and a.quiet and a.force and a.election == ["2024-general"]
 
 
 @pytest.mark.parametrize("argv", [
-    ["-e", "2023-Coordinated", "audit"],
-    ["audit", "-e", "2023-Coordinated"],
+    ["-e", "2023-coordinated", "audit"],
+    ["audit", "-e", "2023-coordinated"],
     ["clean", "--force"],
     ["reconcile", "--fail-on-empty"],
 ])
@@ -53,3 +53,9 @@ def test_publish_accepts_quiet_after_subcommand():
 def test_reconcile_sov_flag(tmp_path):
     a = parse_args(["reconcile", "--sov", str(tmp_path)])
     assert a.sov == tmp_path
+
+
+def test_year_filter_either_side():
+    assert parse_args(["--year", "2024", "clean"]).year == [2024]
+    assert parse_args(["clean", "--year", "2023", "--year", "2025"]).year == [2023, 2025]
+    assert parse_args(["clean"]).year == []

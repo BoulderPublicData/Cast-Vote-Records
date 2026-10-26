@@ -10,7 +10,7 @@ Follows the [data-liberation](https://github.com/brianckeegan/data-liberation-sk
 
 * `scripts/` is the package (not `cvr_pipeline/`, not `src/`).
 * `data/original/` holds immutable raw downloads (LFS-tracked) + `manifest.json` with per-file SHA-256.
-* `data/processed/` holds tidy outputs + `provenance.csv` sidecar (LFS-tracked).
+* `data/processed/` holds one subfolder per dataset, as in Election-Results: `cast-vote-records/` (per-voter CSVs + `_summary.csv` + `provenance.csv`) and `clusters/` (notebook outputs + their `provenance.csv`). All LFS-tracked.
 * `data/audit/` holds auto-generated reports.
 * `data/lookups/` is reserved for crosswalks (currently empty — single-source).
 
@@ -28,14 +28,14 @@ uv run python -m scripts.pipeline reconcile [--sov ../Election-Results/data/proc
 uv run jupyter nbconvert --to notebook --execute --inplace clusters.ipynb
 ```
 
-The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clean|audit|reconcile|publish|list}`. Shared options (`-q`, `-e`, `--force`, `--fail-on-empty`, `--update-manifest`) work before or after the subcommand; one the subcommand doesn't use is an error.
+The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clean|audit|reconcile|publish|list}`. Shared options (`-q`, `-e/--election 2024-general`, `--year 2024`, `--force`, `--fail-on-empty`, `--update-manifest`) work before or after the subcommand; one the subcommand doesn't use is an error.
 
 ## Layout
 
 | Path | Responsibility |
 | --- | --- |
-| `scripts/config.py` | Path constants (`ORIGINAL_DIR`, `PROCESSED_DIR`, ...) |
-| `scripts/sources.py` | `CvrSource` dataclass + `SOURCES` manifest tuple; `ARCHIVED_ORIGINALS` for files kept but not processed (the CORA copy of 2023) |
+| `scripts/config.py` | Path constants (`ORIGINAL_DIR`, `PROCESSED_DIR`, `CVR_DIR`, `CLUSTERS_DIR`, ...) |
+| `scripts/sources.py` | `CvrSource` dataclass + `SOURCES` manifest tuple (election keys are lowercase `{year}-{type}`, type ∈ `ELECTION_TYPES` = general/primary/coordinated, shared with Election-Results; `data/original/` filenames are unchanged and mapped here); `ARCHIVED_ORIGINALS` for files kept but not processed (the CORA copy of 2023) |
 | `scripts/loader.py` | `load_raw_cvr()` — reconstructs the Dominion 4-row header into a MultiIndex DataFrame; repairs mojibake in contest/candidate names (`ftfy.fix_encoding`); refuses LFS pointer files |
 | `scripts/cleaner.py` | `clean_countywide()` — normalizes `BallotType` to text, rejects non-numeric contest cells, `split_redacted()` drops multi-ballot aggregates and keeps single redacted ballots (`_ID/redacted`), `combine_multisheet()` merges each voter's sheets (forward runs, then complementary/out-of-order runs), drops all-NaN contest cols, casts marks to `Int8`, integrity-checks, flattens columns. `detect_city_ballot_types()` is kept as a downstream helper. |
 | `scripts/schema.py` | Pandera `ID_BLOCK_SCHEMA` (unique `voter_id`, `n_sheets >= 1`, text `BallotType`, IDs required on non-redacted rows) + `validate_id_block` + `validate_contest_columns` (blank/0/1 only; text fails). `scripts.clean` calls both. |
@@ -52,7 +52,9 @@ The CLI exposes phases individually too: `python -m scripts.pipeline {fetch|clea
 | `docs/changelog.md` | Per-vintage notes (format drift, parser changes) |
 | `docs/variables.{md,csv}` | Auto-generated column profile (do not hand-edit) |
 | `data/original/` | LFS-tracked source xlsx + `manifest.json` |
-| `data/processed/` | LFS-tracked wide CSVs + `provenance.csv` + `_summary.csv` (+ `cast_vote_records.db` when built) |
+| `data/processed/cast-vote-records/` | LFS-tracked per-voter CSVs `{year}-{type}-county-wide-by-voter.csv` + `_summary.csv` + `provenance.csv` |
+| `data/processed/clusters/` | LFS-tracked `clusters.ipynb` outputs (`{key}-ballots-with-clusters.csv`, `{key}-cluster-profiles.csv`, the small-multiples PNG) + `provenance.csv` |
+| `data/processed/` (root) | `cast_vote_records.db` + `metadata.yaml` when `publish build` runs (not committed) |
 | `data/audit/` | Latest `summary.md` and `reconcile.md` (committed); per-run timestamped copies (gitignored) |
 | `data/lookups/` | Crosswalks / code systems (empty for now) |
 | `clusters.ipynb` | The McInnes two-pass UMAP + HDBSCAN small-multiples analysis |
@@ -94,7 +96,8 @@ The County protects ballot secrecy in two ways, and the cleaner treats them diff
 * **Single loader, not vintage bands.** The Dominion XLSX format is structurally stable across 2019–2025. The only drift is the ID-column set (which `ID_LABELS` auto-detects) and the 2024 third-row party tags (which fall through the "not a known ID label" branch). One parser is defensible because the format actually didn't change.
 * **Wide as the primary storage shape.** Per the data-liberation convention's note on ballot-level data, wide-by-key is correct when the ballot is the observation. A tidy long-form derivative is shown in `docs/filter-pivot-recipes.md`.
 * **Empirical sheet-order wins over heuristics.** Within each BallotType, sheet 1 is whichever fingerprint appears first by RecordId in `(Tab, Batch)` groups (trusting the scanner). The contest-count heuristic (more non-null columns = sheet 1) is a sanity check; disagreement logs a warning rather than overriding.
-* **Per-extract provenance, not per-row.** `data/processed/provenance.csv` keyed on `election_key`.
+* **Per-extract provenance, not per-row.** `data/processed/cast-vote-records/provenance.csv` keyed on `election_key`; `data/processed/clusters/provenance.csv` keyed on output file.
+* **One key format across repos.** `election_key` is `{year}-{type}` in lowercase, exactly as in BoulderPublicData/Election-Results (`2024-general`), so the two datasets join without a crosswalk; `reconcile --sov` relies on it.
 * **Immutable originals.** Files in `data/original/` are write-only from `scripts.fetch`. Re-running the cleaner does not touch them.
 * **Errors durable, not fatal.** The CLI's `--fail-on-empty` flag turns silent regressions loud.
 

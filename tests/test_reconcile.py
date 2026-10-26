@@ -16,7 +16,7 @@ from scripts import reconcile as rec_mod
 
 @pytest.fixture()
 def staged(tmp_path: Path, minimal_cvr_path: Path, monkeypatch):
-    """Clean the minimal fixture as 2023-Coordinated in tmp dirs."""
+    """Clean the minimal fixture as 2023-coordinated in tmp dirs."""
     orig = tmp_path / "original"
     proc = tmp_path / "processed"
     audit = tmp_path / "audit"
@@ -24,23 +24,24 @@ def staged(tmp_path: Path, minimal_cvr_path: Path, monkeypatch):
     shutil.copy(minimal_cvr_path, orig / "2023-Coordinated-CVR.xlsx")
     monkeypatch.setattr(config_mod, "ORIGINAL_DIR", orig)
     monkeypatch.setattr(config_mod, "PROCESSED_DIR", proc)
+    monkeypatch.setattr(config_mod, "CVR_DIR", proc)
     monkeypatch.setattr(config_mod, "AUDIT_DIR", audit)
     monkeypatch.setattr(config_mod, "LOOKUPS_DIR", tmp_path / "lookups")
     monkeypatch.setattr(config_mod, "ORIGINAL_MANIFEST", orig / "manifest.json")
     monkeypatch.setattr(config_mod, "SUMMARY_CSV", proc / "_summary.csv")
     monkeypatch.setattr(config_mod, "PROVENANCE_CSV", proc / "provenance.csv")
-    clean_mod.clean(elections=["2023-Coordinated"], verbose=False)
+    clean_mod.clean(elections=["2023-coordinated"], verbose=False)
     return proc, audit
 
 
 def _csv(proc: Path) -> Path:
-    return proc / "2023-Coordinated-county-wide-by-voter.csv"
+    return proc / "2023-coordinated-county-wide-by-voter.csv"
 
 
 def test_reconcile_passes_on_clean_output(staged):
     _, audit = staged
     report = rec_mod.reconcile(verbose=False)
-    row = next(r for r in report["rows"] if r["election_key"] == "2023-Coordinated")
+    row = next(r for r in report["rows"] if r["election_key"] == "2023-coordinated")
     assert row["status"] == "ok"
     assert row["aggregate_rows"] == 4
     assert row["sum_n_sheets"] == row["sheets_kept"] == 21
@@ -74,7 +75,7 @@ def test_reconcile_fails_on_changed_mark(staged):
     with pytest.raises(SystemExit):
         rec_mod.reconcile(verbose=False)
     report = json.loads((audit / "reconcile.json").read_text())
-    row = next(r for r in report["rows"] if r["election_key"] == "2023-Coordinated")
+    row = next(r for r in report["rows"] if r["election_key"] == "2023-coordinated")
     assert any("mark total" in p for p in row["problems"])
 
 

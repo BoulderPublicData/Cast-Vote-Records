@@ -7,7 +7,7 @@ redaction rule from scratch, and checks the published outputs against it:
 1. **Raw rows.** Rows after the 4-row header == ``_summary.csv``
    ``n_raw_rows``; aggregate rows == ``n_aggregate_rows_dropped``.
 2. **Processed CSV.** Re-count the rows of
-   ``data/processed/<election>-county-wide-by-voter.csv`` (== ``n_voters``),
+   ``data/processed/cast-vote-records/<election>-county-wide-by-voter.csv`` (== ``n_voters``),
    assert ``_ID/voter_id`` is unique, ``Σ _ID/n_sheets`` == the sheets left
    after dropping aggregates, and the ``_ID/redacted`` count ==
    ``n_redacted_kept``.
@@ -101,7 +101,7 @@ def independent_counts(path: Path) -> dict:
 
 
 def _processed_path(election_key: str) -> Path:
-    return config.PROCESSED_DIR / f"{election_key}-county-wide-by-voter.csv"
+    return config.CVR_DIR / f"{election_key}-county-wide-by-voter.csv"
 
 
 def check_processed(path: Path, indep: dict, summary_row: dict | None) -> dict:
@@ -168,7 +168,7 @@ def _norm(text: object) -> str:
 
 def sov_crosscheck(src, indep: dict, sov_dir: Path) -> pd.DataFrame | None:
     """Per contest-choice: CVR marks, aggregate marks, official SoV votes."""
-    path = sov_dir / f"{src.year}-{src.election_type.lower()}-boulder-county.csv"
+    path = sov_dir / f"{src.election_key}-boulder-county.csv"
     if not path.exists():
         return None
     sov = pd.read_csv(path, low_memory=False)
@@ -203,7 +203,7 @@ def sov_crosscheck(src, indep: dict, sov_dir: Path) -> pd.DataFrame | None:
 # ---------------------------------------------------------------------------
 
 def _load_summary() -> pd.DataFrame:
-    summary_csv = config.PROCESSED_DIR / "_summary.csv"
+    summary_csv = config.SUMMARY_CSV
     if not summary_csv.exists():
         raise SystemExit(
             f"{summary_csv} not found; run `python -m scripts.clean` first"
