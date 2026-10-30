@@ -54,8 +54,8 @@ and 2019–2022 CVRs on 2023-12-19. It asked for the 2018 General; the County
 released the 2018 Primary instead."""
 
 CORA_REQUEST_2026 = "C000636-102626"
-"""Boulder County Open Records Center request (made 2026-10-26) that released the
-2017 Coordinated CVR (CSV) and the 2018 General CVR."""
+"""Boulder County Open Records Center request (made 2026-10-26, released
+2026-10-30) for the 2017 Coordinated CVR (CSV) and the 2018 General CVR."""
 
 
 @dataclass(frozen=True)
@@ -93,11 +93,12 @@ SOURCES: tuple[CvrSource, ...] = (
         public_url=None,
         notes=(
             "CORA request C000636-102626 (Boulder County Open Records Center, "
-            "requested 2026-10-26), released as CSV (the same four-row Dominion "
+            "requested 2026-10-26, released 2026-10-30) as CSV (the same four-row Dominion "
             "export as the xlsx files). The bouldercounty.gov 2017 by-year page lists no CVR "
             "(checked 2026-10-30). Aggregate rows list their summed CVR numbers "
             "in CvrNumber."
         ),
+        obtained_at="2026-10-30",
     ),
     CvrSource(
         "2018-primary",
@@ -122,11 +123,12 @@ SOURCES: tuple[CvrSource, ...] = (
         public_url=None,
         notes=(
             "CORA request C000636-102626 (Boulder County Open Records Center, "
-            "requested 2026-10-26). "
+            "requested 2026-10-26, released 2026-10-30). "
             "The bouldercounty.gov 2018 by-year page lists no CVR (checked "
             "2026-10-30). The workbook's second sheet (Supplemental Info) is "
             "not read."
         ),
+        obtained_at="2026-10-30",
     ),
     CvrSource(
         "2019-coordinated",
