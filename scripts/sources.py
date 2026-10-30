@@ -111,6 +111,19 @@ SOURCES: tuple[CvrSource, ...] = (
         obtained_at="2023-12-19",
     ),
     CvrSource(
+        "2018-general",
+        2018,
+        "general",
+        "2018-CVR.xlsx",
+        public_url=None,
+        notes=(
+            "CORA disclosure; the request and release date were not recorded. "
+            "The bouldercounty.gov 2018 by-year page lists no CVR (checked "
+            "2026-10-30). The workbook's second sheet (Supplemental Info) is "
+            "not read."
+        ),
+    ),
+    CvrSource(
         "2019-coordinated",
         2019,
         "coordinated",

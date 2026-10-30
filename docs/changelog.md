@@ -2,8 +2,9 @@
 
 Per-vintage notes on the underlying CVR files and any pipeline changes required to handle them.
 
-## New vintages: 2017 Coordinated and 2018 Primary (CSV)
+## New vintages: 2017 Coordinated, 2018 Primary (CSV) and 2018 General
 
+* **2018 General** (`2018-CVR.xlsx`, CORA; request not recorded): 349,870 rows → 349,795 ballot sheets after 75 aggregate rows (blank `CvrNumber`, as in 2019–2022) → **176,545 voters**, a two-sheet ballot in 46 styles (173,250 two-sheet voters, 3,295 one-sheet). 157 ballots were scanned back page first and merged by the complementary pass; an independent recount of the raw sheets gives the same 157. As in 2022, 2,864 rows are whole ballots on one row (a rare fingerprint filling every contest of the style), kept as one-sheet voters. The workbook's second sheet, `Supplemental Info`, is not read.
 * **Two CORA releases added**, the first in CSV rather than XLSX: `2017_Coordinated_Election_Public_CVR.csv` (94,503 rows → 94,480 voters, 23 aggregate rows dropped) and `2018_Primary_Election_Public_CVR.csv` (85,004 rows → 84,977 voters, 27 aggregate rows dropped). Both have one sheet per ballot and no single redacted ballots. The 2018 Primary came from request C000518-121923 (2023-12-19); the 2017 request was not recorded.
 * **Same export, new file type.** Both use the four-row Dominion header, so `load_raw_cvr` reads CSV by extension and everything downstream is shared. `reconcile` reads CSV with the standard-library `csv` module, independently of the loader's pandas reader. Neither file has a `CountingGroup` column; `PrecinctPortion` is present.
 * **A new aggregate label.** Aggregate rows put the comma-separated list of summed CVR numbers in `CvrNumber` (`81883,81886,…`), which is now an explicit aggregate rule (`AGGREGATE_CVR_LIST_RE`) in the cleaner and in reconcile. Most of these rows also have a cell > 1, but the label rule doesn't depend on that.
