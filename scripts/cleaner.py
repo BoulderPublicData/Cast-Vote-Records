@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from .loader import REDACTED_VALUES, contest_columns
+from .loader import AGGREGATE_CVR_LIST_RE, REDACTED_VALUES, contest_columns
 
 CITY_CONTEST_MARKER = "City of Boulder"
 """Default substring used by :func:`detect_city_ballot_types` to identify
@@ -211,6 +211,9 @@ def split_redacted(raw_df: pd.DataFrame) -> RedactionSplit:
     * its ``CvrNumber`` label contains "Consolidated" or "Aggregated"
       (``"Redacted & Aggregated"``, ``"Redacted and Aggregated - A cards"``,
       ``"Redacted and Consolidated 18 Ballots"``, ...), or
+    * its ``CvrNumber`` is a comma-separated list of CVR numbers, the
+      ballots summed into the row (2017 Coordinated, 2018 Primary;
+      :data:`scripts.loader.AGGREGATE_CVR_LIST_RE`), or
     * any of its contest cells is greater than 1 (a single ballot holds at
       most one mark per choice). This catches the 2019–2022 ``NaN``-label
       aggregates and the 2021 per-style summaries labelled ``"DS-01"``.
@@ -228,7 +231,9 @@ def split_redacted(raw_df: pd.DataFrame) -> RedactionSplit:
         pd.to_numeric(cvr, errors="coerce").isna() | pd.to_numeric(tab, errors="coerce").isna()
     )
     labels = cvr.astype("string")
-    label_says_aggregate = labels.str.contains(AGGREGATE_LABEL_RE, na=False)
+    label_says_aggregate = labels.str.contains(AGGREGATE_LABEL_RE, na=False) | labels.str.fullmatch(
+        AGGREGATE_CVR_LIST_RE, na=False
+    )
     cc = contest_columns(raw_df)
     if cc:
         values_say_aggregate = (raw_df[cc].to_numpy(dtype="float64") > 1).any(axis=1)
@@ -242,7 +247,9 @@ def split_redacted(raw_df: pd.DataFrame) -> RedactionSplit:
         {
             str(v)
             for v in redacted_labels.dropna().unique()
-            if str(v) not in REDACTED_VALUES and not re.fullmatch(r"DS-\d+", str(v))
+            if str(v) not in REDACTED_VALUES
+            and not re.fullmatch(r"DS-\d+", str(v))
+            and not AGGREGATE_CVR_LIST_RE.fullmatch(str(v))
         }
     )
     return RedactionSplit(
