@@ -1,6 +1,6 @@
 """Auto-generated audit report — summary stats per processed CSV.
 
-Reads every ``data/processed/<election>-city-of-boulder-wide.csv``, computes
+Reads every ``data/processed/cast-vote-records/<election>-county-wide-by-voter.csv``, computes
 basic shape / dtype / null / cardinality stats, and writes a Markdown
 report to ``data/audit/summary-<YYYYMMDD-HHMMSS>.md`` plus a stable
 ``data/audit/summary.md`` (the latest report).
@@ -19,23 +19,24 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import AUDIT_DIR, DOCS_DIR, PROCESSED_DIR, SUMMARY_CSV, ensure_dirs
+from . import config
+from .config import AUDIT_DIR, DOCS_DIR, ensure_dirs
 from .schema import contest_columns, id_columns
 
 
 def _list_processed() -> list[Path]:
-    return sorted(PROCESSED_DIR.glob("*-county-wide-by-voter.csv"))
+    return sorted(config.CVR_DIR.glob("*-county-wide-by-voter.csv"))
 
 
 def _summarize_one(path: Path) -> dict:
     df = pd.read_csv(path, low_memory=False)
     return {
-        "path":         path,
-        "n_ballots":    len(df),
-        "n_id_cols":    len(id_columns(df)),
+        "path": path,
+        "n_ballots": len(df),
+        "n_id_cols": len(id_columns(df)),
         "n_contest_cols": len(contest_columns(df)),
-        "memory_mb":    df.memory_usage(index=False, deep=True).sum() / 1e6,
-        "null_pct":     float(df.isna().mean().mean() * 100),
+        "memory_mb": df.memory_usage(index=False, deep=True).sum() / 1e6,
+        "null_pct": float(df.isna().mean().mean() * 100),
     }
 
 
@@ -45,7 +46,7 @@ def write_audit(verbose: bool = True) -> Path:
     files = _list_processed()
     if not files:
         raise SystemExit(
-            "no processed CSVs found in data/processed/; "
+            "no processed CSVs found in data/processed/cast-vote-records/; "
             "run `python -m scripts.clean` first"
         )
 
@@ -77,24 +78,32 @@ def write_audit(verbose: bool = True) -> Path:
         )
     lines.append("")
 
-    if SUMMARY_CSV.exists():
-        lines.append("## Pipeline bookkeeping (`data/processed/_summary.csv`)")
+    if config.SUMMARY_CSV.exists():
+        s = pd.read_csv(config.SUMMARY_CSV).set_index("election_key")
+        lines.extend(_redaction_section(s))
+        lines.append("## Pipeline bookkeeping (`data/processed/cast-vote-records/_summary.csv`)")
         lines.append("")
-        s = pd.read_csv(SUMMARY_CSV).set_index("election_key")
         lines.append(s.to_markdown())
         lines.append("")
 
     lines.append("## Files in `data/original/`")
     lines.append("")
     from .fetch import load_manifest
+
     manifest = load_manifest()
     if manifest:
-        lines.append("| File | SHA-256 (first 12) | size (MB) | mtime |")
-        lines.append("| --- | --- | ---: | --- |")
+        lines.append(
+            "| File | SHA-256 (first 12) | size (MB) | retrieved | posted by County "
+            "| obtained (CORA) | first committed | workbook saved |"
+        )
+        lines.append("| --- | --- | ---: | --- | --- | --- | --- | --- |")
         for fname, info in sorted(manifest.items()):
             lines.append(
                 f"| `{fname}` | `{info['sha256'][:12]}` | "
-                f"{info['size']/1e6:.1f} | {info['mtime_iso']} |"
+                f"{info['size'] / 1e6:.1f} | {info.get('retrieved_at', '')} | "
+                f"{info.get('source_last_modified', '')} | "
+                f"{info.get('obtained_at', '')} | {info.get('first_committed_at', '')} | "
+                f"{info.get('xlsx_modified', '')} |"
             )
     else:
         lines.append("(manifest.json not yet generated; run `python -m scripts.fetch`)")
@@ -112,6 +121,39 @@ def write_audit(verbose: bool = True) -> Path:
     return out_path
 
 
+def _redaction_section(s: pd.DataFrame) -> list[str]:
+    """Kept-redacted vs dropped-aggregate counts, plus merge diagnostics."""
+    cols = {
+        "n_raw_rows": "raw rows",
+        "n_aggregate_rows_dropped": "aggregate rows dropped",
+        "n_redacted_kept": "redacted ballots kept",
+        "n_redacted_in_multisheet_styles": "…of which in multi-sheet styles (unmerged)",
+        "n_out_of_order_merges": "out-of-order sheet merges",
+        "n_rare_fingerprint_sheets": "rare-fingerprint sheets",
+        "n_rare_fingerprint_full_ballot": "…of which a whole ballot on one row",
+        "n_voters": "voters",
+    }
+    present = [c for c in cols if c in s.columns]
+    if "n_redacted_kept" not in present:
+        return []
+    lines = [
+        "## Redaction and merge diagnostics",
+        "",
+        (
+            "Single-ballot redacted rows (identifiers blanked by the County, marks "
+            "intact) are kept with `_ID/redacted = True`; aggregate rows that sum "
+            "several ballots are dropped. See `docs/methodology.md` § Redaction."
+        ),
+        "",
+        "| Election | " + " | ".join(cols[c] for c in present) + " |",
+        "| --- | " + " | ".join("---:" for _ in present) + " |",
+    ]
+    for key, row in s.iterrows():
+        lines.append(f"| {key} | " + " | ".join(f"{int(row[c]):,}" for c in present) + " |")
+    lines.append("")
+    return lines
+
+
 def _write_variables_report(rows: list[dict], verbose: bool) -> None:
     """Per-column profile across every processed CSV.
 
@@ -123,14 +165,16 @@ def _write_variables_report(rows: list[dict], verbose: bool) -> None:
         df = pd.read_csv(r["path"], low_memory=False, nrows=5000)
         for col in df.columns:
             kind = "id" if col.startswith("_ID/") else "contest"
-            records.append({
-                "election_key": r["key"],
-                "column":       col,
-                "kind":         kind,
-                "dtype":        str(df[col].dtype),
-                "n_distinct":   int(df[col].nunique(dropna=True)),
-                "null_pct":     float(df[col].isna().mean() * 100),
-            })
+            records.append(
+                {
+                    "election_key": r["key"],
+                    "column": col,
+                    "kind": kind,
+                    "dtype": str(df[col].dtype),
+                    "n_distinct": int(df[col].nunique(dropna=True)),
+                    "null_pct": float(df[col].isna().mean() * 100),
+                }
+            )
     if not records:
         return
     variables = pd.DataFrame(records)
@@ -138,9 +182,11 @@ def _write_variables_report(rows: list[dict], verbose: bool) -> None:
 
     lines = [
         "# Variables (auto-generated)\n",
-        "Mechanical profile of every column in every processed CSV. "
-        "Sampled on the first 5,000 rows per file. The hand-maintained "
-        "documentation lives in `docs/data-dictionary.md`.\n",
+        (
+            "Mechanical profile of every column in every processed CSV. "
+            "Sampled on the first 5,000 rows per file. The hand-maintained "
+            "documentation lives in `docs/data-dictionary.md`.\n"
+        ),
         "| election_key | column | kind | dtype | n_distinct | null % |",
         "| --- | --- | --- | --- | ---: | ---: |",
     ]
@@ -151,7 +197,7 @@ def _write_variables_report(rows: list[dict], verbose: bool) -> None:
         )
     (DOCS_DIR / "variables.md").write_text("\n".join(lines) + "\n")
     if verbose:
-        print(f"  wrote {DOCS_DIR/'variables.md'} ({len(records)} rows)")
+        print(f"  wrote {DOCS_DIR / 'variables.md'} ({len(records)} rows)")
 
 
 def _main(argv: list[str] | None = None) -> int:

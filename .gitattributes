@@ -1,10 +1,11 @@
 # Cast Vote Record xlsx files are large; store via Git LFS.
 data/original/**/*.xlsx filter=lfs diff=lfs merge=lfs -text
 
-# Cleaned wide CSVs run into the tens of MB; LFS keeps diffs small.
-data/processed/*.csv filter=lfs diff=lfs merge=lfs -text
-
-# Cluster small-multiples PNG produced by the analysis notebook.
-data/processed/*.png filter=lfs diff=lfs merge=lfs -text
-data/processed/*.db filter=lfs diff=lfs merge=lfs -text
-data/processed/*.parquet filter=lfs diff=lfs merge=lfs -text
+# Processed outputs live in one subfolder per dataset (as in Election-Results):
+#   data/processed/cast-vote-records/  per-voter CSVs + _summary.csv + provenance.csv
+#   data/processed/clusters/           clusters.ipynb outputs + provenance.csv
+# The CSVs run into the tens of MB; LFS keeps diffs small.
+data/processed/**/*.csv filter=lfs diff=lfs merge=lfs -text
+data/processed/**/*.png filter=lfs diff=lfs merge=lfs -text
+data/processed/**/*.db filter=lfs diff=lfs merge=lfs -text
+data/processed/**/*.parquet filter=lfs diff=lfs merge=lfs -text

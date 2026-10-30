@@ -68,31 +68,80 @@ into the same numeric value.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Union
 
+import ftfy
 import pandas as pd
 
-ID_LABELS: frozenset[str] = frozenset({
-    "CvrNumber",
-    "TabulatorNum",
-    "BatchId",
-    "RecordId",
-    "ImprintedId",
-    "CountingGroup",
-    "PrecinctPortion",
-    "BallotType",
-})
+ID_LABELS: frozenset[str] = frozenset(
+    {
+        "CvrNumber",
+        "TabulatorNum",
+        "BatchId",
+        "RecordId",
+        "ImprintedId",
+        "CountingGroup",
+        "PrecinctPortion",
+        "BallotType",
+    }
+)
 """All known ID-column labels across Boulder County CVRs 2019–2025."""
 
-REDACTED_VALUES: frozenset[str] = frozenset({
-    "RCV Redacted & Randomly Sorted",
-    "Redacted & Aggregated",
-})
-"""Strings the County puts in :code:`CvrNumber` for privacy-aggregated rows."""
+SINGLE_BALLOT_SENTINELS: frozenset[str] = frozenset(
+    {
+        "Redacted",  # 2024 Primary, 2025 Coordinated
+        "RCV Redacted & Randomly Sorted",  # 2023 Coordinated
+    }
+)
+"""``CvrNumber`` strings the County uses for an **individual** ballot whose
+identifiers (``TabulatorNum`` / ``BatchId`` / ``RecordId`` / ``ImprintedId``)
+were blanked for privacy. Each such row still records exactly one ballot's
+marks (every contest cell is 0, 1 or blank), so the cleaner keeps it and
+flags it with ``_ID/redacted = True``."""
+
+AGGREGATE_SENTINELS: frozenset[str] = frozenset(
+    {
+        "Redacted & Aggregated",  # 2023 Coordinated
+        "Redacted and Aggregated - A cards",  # 2024 General
+        "Redacted and Aggregated - B cards",  # 2024 General
+        "Redacted and Aggregated - B cards or Property Owner Ballot",  # 2024 General
+        "Redacted and Consolidated",  # 2024 Primary
+        "Redacted and Consolidated 10 Ballots",  # 2025 Coordinated
+        "Redacted and Consolidated 18 Ballots",  # 2025 Coordinated
+        "Redacted and Consolidated 20 Ballots",  # 2025 Coordinated
+    }
+)
+"""``CvrNumber`` strings observed on **aggregate** rows: one row summing the
+marks of several ballots (cell values > 1). The cleaner classifies aggregates
+by pattern (label contains "Consolidated" or "Aggregated") or by value (any
+contest cell > 1), not by this exact list, so a new label in a future file is
+still handled. 2019–2022 aggregates carry ``NaN`` in ``CvrNumber`` and 2021
+per-style summaries carry the ballot-style code (``"DS-01"``); both are
+caught by the value rule."""
+
+REDACTED_VALUES: frozenset[str] = SINGLE_BALLOT_SENTINELS | AGGREGATE_SENTINELS
+"""Every ``CvrNumber`` sentinel string observed across 2019–2025 (single-ballot
+and aggregate). Informational; see :func:`scripts.cleaner.split_redacted` for
+the classification rule."""
 
 
-def load_raw_cvr(path: Union[str, Path]) -> pd.DataFrame:
+def repair_text(value: object) -> object:
+    """Repair UTF-8-read-as-Latin-1 mojibake in a header cell.
+
+    The 2024 General header reads ``Karina GarcÃ\xada`` for "García", and the
+    2022 General ``Paul NoÃ«l Fiorino`` for "Noël": the County's export
+    double-encoded them (also 2021 ``LaurenÂ\xa0Folkerts`` and 2023
+    ``Jorge ChÃ¡vez``). ``ftfy.fix_encoding`` reverses exactly that and leaves
+    correct text (including curly apostrophes) alone; non-breaking spaces then
+    become ordinary spaces. Non-strings pass through.
+    """
+    if not isinstance(value, str):
+        return value
+    return ftfy.fix_encoding(value).replace("\xa0", " ")
+
+
+def load_raw_cvr(path: str | Path) -> pd.DataFrame:
     """Read a CVR xlsx and reconstruct its column index.
 
     Parameters
@@ -109,16 +158,23 @@ def load_raw_cvr(path: Union[str, Path]) -> pd.DataFrame:
           (e.g. ``('_ID', 'CvrNumber')``, ``('_ID', 'BallotType')``)
         * ``(contest, candidate)`` for ballot-choice columns
 
-        Values for ID columns are strings; ballot-choice values are
-        ``0``/``1``/``NaN`` for single-choice contests and 0/1/NaN per
-        candidate-round combination for ranked-choice contests.
+        Contest and candidate names have mojibake repaired (see
+        :func:`repair_text`). Values for ID columns are strings; ballot-choice
+        values are ``0``/``1``/``NaN`` for single-choice contests and 0/1/NaN
+        per candidate-rank combination for ranked-choice contests.
     """
-    raw = pd.read_excel(path, header=None)
+    from .fetch import LfsPointerError, is_lfs_pointer
+
+    if is_lfs_pointer(Path(path)):
+        raise LfsPointerError(
+            f"{path} is a Git LFS pointer, not the spreadsheet. Run `git lfs pull` first."
+        )
+    raw = pd.read_excel(path, header=None, engine="openpyxl")
     if len(raw) < 5:
         raise ValueError(f"{path}: fewer than 5 rows; not a Boulder County CVR")
 
-    contest_row = raw.iloc[1]
-    candidate_row = raw.iloc[2]
+    contest_row = raw.iloc[1].map(repair_text)
+    candidate_row = raw.iloc[2].map(repair_text)
     label_row = raw.iloc[3]
 
     cols: list[tuple[object, object]] = []

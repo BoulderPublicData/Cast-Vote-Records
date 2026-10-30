@@ -24,8 +24,7 @@ try:
 except ImportError:
     sqlite_utils = None  # type: ignore
 
-from .config import PROCESSED_DIR, PROVENANCE_CSV, ensure_dirs
-
+from .config import CVR_DIR, PROCESSED_DIR, PROVENANCE_CSV, ensure_dirs
 
 DB_PATH = PROCESSED_DIR / "cast_vote_records.db"
 METADATA_PATH = PROCESSED_DIR / "metadata.yaml"
@@ -33,10 +32,7 @@ METADATA_PATH = PROCESSED_DIR / "metadata.yaml"
 
 def _check_sqlite_utils():
     if sqlite_utils is None:
-        raise SystemExit(
-            "publish requires sqlite-utils. Install with: "
-            "pip install -e \".[publish]\""
-        )
+        raise SystemExit('publish requires sqlite-utils. Install with: pip install -e ".[publish]"')
 
 
 def build(verbose: bool = True):
@@ -47,16 +43,16 @@ def build(verbose: bool = True):
         DB_PATH.unlink()
     db = sqlite_utils.Database(DB_PATH)
 
-    wide_csvs = sorted(PROCESSED_DIR.glob("*-county-wide-by-voter.csv"))
+    wide_csvs = sorted(CVR_DIR.glob("*-county-wide-by-voter.csv"))
     if not wide_csvs:
         raise SystemExit(
-            "no wide CSVs in data/processed/; run `python -m scripts.clean` first"
+            "no wide CSVs in data/processed/cast-vote-records/; run `python -m scripts.clean` first"
         )
 
     for csv in wide_csvs:
         election_key = csv.name.removesuffix("-county-wide-by-voter.csv")
         table_name = election_key.replace("-", "_").lower()
-        df = pd.read_csv(csv, low_memory=False)
+        df = pd.read_csv(csv, low_memory=False, dtype={"_ID/BallotType": str})
         db[table_name].insert_all(df.to_dict(orient="records"))  # type: ignore[union-attr]
         if verbose:
             print(f"  inserted {len(df):,} rows into table '{table_name}'")
@@ -73,13 +69,15 @@ def build(verbose: bool = True):
 
 def _write_metadata(verbose: bool) -> None:
     from .sources import SOURCES
+
     lines = [
         "title: Boulder County Cast Vote Records",
         "description_html: |",
         "  <p>Redacted ballot-level Cast Vote Records published by the Boulder County",
-        "  Clerk and Recorder, 2019&ndash;2025. Each table holds the City of",
-        "  Boulder-eligible ballots from one election; the <code>provenance</code>",
-        "  table carries source URLs and SHA-256 hashes for the underlying xlsx files.</p>",
+        "  Clerk and Recorder, 2019&ndash;2025. Each table holds every voter in the",
+        "  county (countywide; one row per voter) for one election; the",
+        "  <code>provenance</code> table carries source URLs and SHA-256 hashes for",
+        "  the underlying xlsx files.</p>",
         "license: CC-BY-4.0",
         "license_url: https://creativecommons.org/licenses/by/4.0/",
         "source: Boulder County Clerk and Recorder",
@@ -89,8 +87,6 @@ def _write_metadata(verbose: bool) -> None:
         "    tables:",
     ]
     for src in SOURCES:
-        if src.election_key == "2024-Primary":
-            continue
         table_name = src.election_key.replace("-", "_").lower()
         lines.append(f"      {table_name}:")
         lines.append(
@@ -106,28 +102,39 @@ def _write_metadata(verbose: bool) -> None:
 
 def _main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="scripts.publish", description=__doc__)
+    p.add_argument("--quiet", "-q", action="store_true")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("build", help="Build SQLite + metadata for Datasette")
-    sub.add_parser("serve", help="Build then launch a local Datasette server")
-    sub.add_parser("deploy", help="Build then `datasette publish vercel`")
+    for name, text in (
+        ("build", "Build SQLite + metadata for Datasette"),
+        ("serve", "Build then launch a local Datasette server"),
+        ("deploy", "Build then `datasette publish vercel`"),
+    ):
+        sp = sub.add_parser(name, help=text)
+        sp.add_argument("--quiet", "-q", action="store_true", default=argparse.SUPPRESS)
     a = p.parse_args(argv)
     if a.cmd == "build":
-        build()
+        build(verbose=not a.quiet)
         return 0
     if a.cmd in {"serve", "deploy"}:
-        build()
+        build(verbose=not a.quiet)
         cmd = ["datasette"]
         if a.cmd == "serve":
             cmd += ["serve", str(DB_PATH), "-m", str(METADATA_PATH)]
         else:
             cmd += [
-                "publish", "vercel", str(DB_PATH), "-m", str(METADATA_PATH),
-                "--project", "cast-vote-records",
+                "publish",
+                "vercel",
+                str(DB_PATH),
+                "-m",
+                str(METADATA_PATH),
+                "--project",
+                "cast-vote-records",
             ]
         if shutil.which(cmd[0]) is None:
             print(f"{cmd[0]} not on PATH; install datasette first", file=sys.stderr)
             return 1
         import subprocess
+
         return subprocess.call(cmd)
     return 2
 
