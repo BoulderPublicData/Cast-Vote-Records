@@ -133,12 +133,12 @@ The County protects ballot secrecy in two ways, and the cleaner treats them diff
 
 ## How to add a new election
 
-1. Place the xlsx in `data/original/<filename>` (or rely on `scripts.fetch` if it has a public URL).
+1. Place the xlsx (or csv) in `data/original/<filename>` (or rely on `scripts.fetch` if it has a public URL).
 2. Append a `CvrSource(...)` to `SOURCES` in `scripts/sources.py`.
 3. Run `uv run python -m scripts.pipeline`, then `uv run python -m scripts.pipeline reconcile`.
 4. Run `uv run pytest`.
 5. Update `docs/changelog.md` with any vintage-specific notes.
-6. Re-execute `clusters.ipynb` if you want the new election in the small-multiples.
+6. Re-execute `clusters.ipynb` if you want the new election in the small-multiples (elections with no City of Boulder contests get no panel).
 7. Commit; LFS handles the binary blobs.
 
 ## Known limitations
@@ -150,7 +150,7 @@ The County protects ballot secrecy in two ways, and the cleaner treats them diff
 * **The 2018 and 2024 Primaries have no City of Boulder contests.** They are partisan state primaries, so City-level analyses (e.g. `clusters.ipynb`) skip them. The countywide per-voter CSVs are complete (2018: 84,977 voters × 53 contest-choice columns; 2024: 65,787 voters × 30).
 * **No 2020 or 2022 Primary, or 2024 Presidential Primary.** They haven't been requested or added (the 2024 Presidential Primary CVR is on the County's 2024 page).
 * **Reconcile checks the CVR against itself, not the official count.** `scripts.reconcile` re-derives row counts and per-column mark totals from the originals with a second parser and fails on any difference. The Statement of Votes comparison (`--sov`, against Election-Results) is informational only: the SoV counts aggregated ballots that are not in the per-voter rows.
-* **Redacted ballots are not sheet-merged.** They have no scan position, so a redacted sheet of a multi-sheet ballot stays its own row (`n_redacted_in_multisheet_styles`, 0 in 2019–2025).
+* **Redacted ballots are not sheet-merged.** They have no scan position, so a redacted sheet of a multi-sheet ballot stays its own row (`n_redacted_in_multisheet_styles`, 0 in 2017–2025).
 
 ## Future work
 
@@ -159,7 +159,7 @@ The County protects ballot secrecy in two ways, and the cleaner treats them diff
 * **Datasette deployment** — `scripts.publish.build` is scaffolded; enable `publish.yml` once `VERCEL_TOKEN` is in repo secrets.
 * **Quarto site** under `docs/` — rendered to GitHub Pages via the disabled `gh-pages.yml`.
 * **2024 General Recount diff** — comparing it to the pre-recount version is precisely the NIST CDF *modified-snapshot* delta.
-* **Pre-2019 elections** if CORA-retrievable.
+* **Pre-2017 elections** if CORA-retrievable; the 2020 and 2022 primaries and the 2024 Presidential Primary.
 
 ## References
 
