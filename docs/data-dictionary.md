@@ -39,7 +39,7 @@ Format: ``<contest name>::<choice name>``.
 
 Cells are written as integers (`1`/`0`, nullable `Int8` in pandas), never `1.0`/`0.0`. Any other value fails `scripts.schema.validate_contest_columns`.
 
-**Nuance.** What the CSV stores as `1` is `HasIndication` after the voting system's contest rules, not the raw mark. No contest in any of the eight files has more marks than its "Vote For" limit, so an overvoted contest appears to be exported as all `0`s and cannot be told apart from an undervote. Analyses sensitive to invalidated marks need either the *original* or the *modified* (post-adjudication) snapshot, neither of which Boulder publishes in the redacted archive.
+**Nuance.** What the CSV stores as `1` is `HasIndication` after the voting system's contest rules, not the raw mark. No contest in any of the eleven files (about 37 million contest-ballots) has more marks than its "Vote For" limit, so an overvoted contest appears to be exported as all `0`s and cannot be told apart from an undervote. Analyses sensitive to invalidated marks need either the *original* or the *modified* (post-adjudication) snapshot, neither of which Boulder publishes in the redacted archive.
 
 The `NaN`-vs-`0` distinction matters for undervote analysis: an *undervote* is `0` (eligible, left blank), vs. *not eligible* (`NaN`). The clustering pipeline collapses `NaN → 0` for embedding; analyses where the distinction matters should preserve it from the wide CSV.
 

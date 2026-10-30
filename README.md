@@ -62,7 +62,7 @@ Cell values: `1` = the scanner detected a mark in the bubble; `0` = the bubble w
 
 The 2018 and 2024 Primaries have no City of Boulder contests, so they have no cluster files. Redacted ballots are left out of the clustering.
 
-![Eight scatter-plot panels, one per Boulder County election from 2019 to 2025, each showing City of Boulder voters projected to two dimensions with UMAP. Points are colored by HDBSCAN cluster, with each cluster's id printed at its center and noise shown as hollow rings. The 2024 Primary panel is empty because that election had no City of Boulder contests.](data/processed/clusters/city-of-boulder-cluster-smallmultiples.png)
+![Eleven scatter-plot panels, one per Boulder County election from 2017 to 2025, each showing City of Boulder voters projected to two dimensions with UMAP. Points are colored by HDBSCAN cluster, with each cluster's id printed at its center and noise shown as hollow rings. The 2018 and 2024 Primary panels are empty because those elections had no City of Boulder contests.](data/processed/clusters/city-of-boulder-cluster-smallmultiples.png)
 
 *Figure: City of Boulder voter clusters by election. Colors mark each election's eight largest clusters in size order (blue = largest); smaller clusters are black; hollow rings are noise. Numbers are cluster ids, matching the `cluster` column. Positions are only meaningful within a panel.*
 
