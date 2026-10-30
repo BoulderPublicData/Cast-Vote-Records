@@ -130,7 +130,7 @@ for path in sorted(Path("data/processed/cast-vote-records").glob("*-county-wide-
 all_long = pd.concat(frames, ignore_index=True)
 ```
 
-The long table of all eight elections has tens of millions of rows. Filter each election (e.g. to City of Boulder) before melting if memory is tight.
+The long table of all eleven elections has tens of millions of rows. Filter each election (e.g. to City of Boulder) before melting if memory is tight.
 
 ## Undervote vs ineligible
 

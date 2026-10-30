@@ -1,5 +1,7 @@
 # Cast Vote Record xlsx files are large; store via Git LFS.
 data/original/**/*.xlsx filter=lfs diff=lfs merge=lfs -text
+# The 2017 and 2018 CORA releases are the same export saved as CSV.
+data/original/**/*.csv filter=lfs diff=lfs merge=lfs -text
 
 # Processed outputs live in one subfolder per dataset (as in Election-Results):
 #   data/processed/cast-vote-records/  per-voter CSVs + _summary.csv + provenance.csv

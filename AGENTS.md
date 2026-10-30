@@ -4,7 +4,7 @@ Maintainer-facing brief. Consumers should read [`README.md`](README.md) instead.
 
 ## What this project is
 
-A reproducible Python pipeline that liberates Boulder County, Colorado redacted Cast Vote Records (2019–2025) from the County's Dominion XLSX exports into tidy, documented, wide-format countywide per-voter CSVs, plus a single analysis notebook that runs a McInnes-style two-pass UMAP + HDBSCAN clustering per election.
+A reproducible Python pipeline that liberates Boulder County, Colorado redacted Cast Vote Records (2017–2025) from the County's Dominion exports (XLSX; CSV for the 2017 and 2018 CORA releases) into tidy, documented, wide-format countywide per-voter CSVs, plus a single analysis notebook that runs a McInnes-style two-pass UMAP + HDBSCAN clustering per election.
 
 Follows the [data-liberation](https://github.com/brianckeegan/data-liberation-skill) convention pragmatically:
 
@@ -113,16 +113,16 @@ The audit is a *comparison audit*: counties export CVRs from the voting system, 
 The County protects ballot secrecy in two ways, and the cleaner treats them differently (`scripts.cleaner.split_redacted`; full table in [`docs/methodology.md` § Redaction](docs/methodology.md#redaction)):
 
 * **Single redacted ballots** — identifiers blanked, marks intact. `CvrNumber` is `"Redacted"` (2024 Primary, 2025), `"RCV Redacted & Randomly Sorted"` (2023; mayoral RCV contest only), or `NaN` with every cell 0/1. **Kept**, flagged `_ID/redacted = True`, `voter_id = redacted-NNNNN`, never sheet-merged (no Tab/Batch/RecordId).
-* **Aggregates** — several ballots summed into one row. `CvrNumber` contains "Consolidated"/"Aggregated" (2023+), or any contest cell is > 1 (the `NaN`-label per-style rows of 2019–2022 and the 2021 `"DS-01"` summaries). **Dropped.**
+* **Aggregates** — several ballots summed into one row. `CvrNumber` contains "Consolidated"/"Aggregated" (2023+), or is the comma-separated list of the summed CVR numbers (2017, 2018 Primary), or any contest cell is > 1 (the `NaN`-label per-style rows of 2019–2022 and the 2021 `"DS-01"` summaries). **Dropped.**
 
 `_summary.csv` reports both (`n_redacted_kept`, `n_aggregate_rows_dropped`). Never re-create blanked identifiers or restore the scan order of redacted rows; see the re-identification caveat in the methodology. The `min_ballots=5` threshold in `detect_city_ballot_types` is a defensive backstop against single aggregate rows.
 
 ## Design decisions
 
 * **`scripts/` package, single analysis notebook.** The data-liberation convention is `scripts/` (not `src/` or the project name). The pipeline is callable, testable, and CI-friendly; the analysis is one notebook a critic can read top-to-bottom.
-* **Per-voter primary output, not per-sheet.** Dominion CVRs export one row per ballot sheet ([NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103)). Multi-sheet ballots — the 2024 Boulder General used a two-sheet ballot for nearly every style — would over-count voters by their average sheet-count if kept per-sheet. The cleaner infers sheet identity per BallotType from contest-fill fingerprints, then walks `(Tab, Batch, RecordId)` order to merge each consecutive `(sheet K, sheet K+1)` run into one voter, then merges adjacent incomplete runs with complementary sheets (back page scanned first). Rare fingerprints (< 5% of a style) stay one-sheet voters and are counted in `_summary.csv`; styles with 3+ frequent fingerprints merge as 3+-sheet voters (none exist 2019–2025). Bookkeeping columns `_ID/n_sheets`, `_ID/voter_id` and `_ID/redacted` carry the merge metadata.
+* **Per-voter primary output, not per-sheet.** Dominion CVRs export one row per ballot sheet ([NIST SP 1500-103 §3.5.2](https://doi.org/10.6028/NIST.SP.1500-103)). Multi-sheet ballots — the 2024 Boulder General used a two-sheet ballot for nearly every style — would over-count voters by their average sheet-count if kept per-sheet. The cleaner infers sheet identity per BallotType from contest-fill fingerprints, then walks `(Tab, Batch, RecordId)` order to merge each consecutive `(sheet K, sheet K+1)` run into one voter, then merges adjacent incomplete runs with complementary sheets (back page scanned first). Rare fingerprints (< 5% of a style) stay one-sheet voters and are counted in `_summary.csv`; styles with 3+ frequent fingerprints merge as 3+-sheet voters (none exist 2017–2025). Bookkeeping columns `_ID/n_sheets`, `_ID/voter_id` and `_ID/redacted` carry the merge metadata.
 * **Countywide, not jurisdiction-filtered.** The pipeline emits every ballot in the county. Jurisdiction filtering (City of Boulder, Longmont, etc.) is done downstream in the analysis layer. `scripts.cleaner.detect_city_ballot_types` is kept available for the inverse operation (ballot-style → membership); `clusters.ipynb` does not use it, and filters by contest name instead.
-* **Single loader, not vintage bands.** The Dominion XLSX format is structurally stable across 2019–2025. The only drift is the ID-column set (which `ID_LABELS` auto-detects) and the 2024 third-row party tags (which fall through the "not a known ID label" branch). One parser is defensible because the format actually didn't change.
+* **Single loader, not vintage bands.** The Dominion export is structurally stable across 2017–2025; the 2017 and 2018 CORA releases are the same export saved as CSV, and `load_raw_cvr` picks the reader by extension. The only drift is the ID-column set (which `ID_LABELS` auto-detects) and the 2024 third-row party tags (which fall through the "not a known ID label" branch). One parser is defensible because the format actually didn't change.
 * **Wide as the primary storage shape.** Per the data-liberation convention's note on ballot-level data, wide-by-key is correct when the ballot is the observation. A tidy long-form derivative is shown in `docs/filter-pivot-recipes.md`.
 * **Empirical sheet-order wins over heuristics.** Within each BallotType, sheet 1 is whichever fingerprint appears first by RecordId in `(Tab, Batch)` groups (trusting the scanner). The contest-count heuristic (more non-null columns = sheet 1) is a sanity check; disagreement logs a warning rather than overriding.
 * **Per-extract provenance, not per-row.** `data/processed/cast-vote-records/provenance.csv` keyed on `election_key`; `data/processed/clusters/provenance.csv` keyed on output file.
@@ -133,23 +133,24 @@ The County protects ballot secrecy in two ways, and the cleaner treats them diff
 
 ## How to add a new election
 
-1. Place the xlsx in `data/original/<filename>` (or rely on `scripts.fetch` if it has a public URL).
+1. Place the xlsx (or csv) in `data/original/<filename>` (or rely on `scripts.fetch` if it has a public URL).
 2. Append a `CvrSource(...)` to `SOURCES` in `scripts/sources.py`.
 3. Run `uv run python -m scripts.pipeline`, then `uv run python -m scripts.pipeline reconcile`.
 4. Run `uv run pytest`.
 5. Update `docs/changelog.md` with any vintage-specific notes.
-6. Re-execute `clusters.ipynb` if you want the new election in the small-multiples.
+6. Re-execute `clusters.ipynb` if you want the new election in the small-multiples (elections with no City of Boulder contests get no panel).
 7. Commit; LFS handles the binary blobs.
 
 ## Known limitations
 
 * **Voter anonymity prevents panel analysis.** The redacted CVRs strip voter identifiers; the same voter cannot be tracked across years.
-* **`HasIndication` vs `IsAllocable`; overvotes are invisible.** The cell value `1` is `HasIndication` as interpreted by contest rules. Across all eight files (about 27 million contest-ballots) no contest ever has more marks than its "Vote For" limit, so an overvoted contest appears to be exported as all `0`s, indistinguishable from an undervote. Analyses of invalidated marks need the *original* or *modified* snapshot, neither of which Boulder publishes.
+* **`HasIndication` vs `IsAllocable`; overvotes are invisible.** The cell value `1` is `HasIndication` as interpreted by contest rules. Across all eleven files (about 37 million contest-ballots) no contest ever has more marks than its "Vote For" limit, so an overvoted contest appears to be exported as all `0`s, indistinguishable from an undervote. Analyses of invalidated marks need the *original* or *modified* snapshot, neither of which Boulder publishes.
 * **NaN-vs-0 semantics.** `NaN` = "contest not on this voter's ballot style"; `0` = "contest was on the ballot, voter did not mark this choice." The clustering pipeline collapses `NaN → 0` for embedding; preserve the distinction from the wide CSV when undervote analysis matters.
 * **Schema drift across vintages.** ID column sets differ across years; the pandera schema is permissive on optional ID columns.
-* **2024 Primary has no City of Boulder contests.** It is a partisan state primary, so City-level analyses (e.g. `clusters.ipynb`) skip it. The countywide per-voter CSV is complete (65,787 voters × 30 contest columns).
+* **The 2018 and 2024 Primaries have no City of Boulder contests.** They are partisan state primaries, so City-level analyses (e.g. `clusters.ipynb`) skip them. The countywide per-voter CSVs are complete (2018: 84,977 voters × 53 contest-choice columns; 2024: 65,787 voters × 30).
+* **No 2020 or 2022 Primary, or 2024 Presidential Primary.** They haven't been requested or added (the 2024 Presidential Primary CVR is on the County's 2024 page).
 * **Reconcile checks the CVR against itself, not the official count.** `scripts.reconcile` re-derives row counts and per-column mark totals from the originals with a second parser and fails on any difference. The Statement of Votes comparison (`--sov`, against Election-Results) is informational only: the SoV counts aggregated ballots that are not in the per-voter rows.
-* **Redacted ballots are not sheet-merged.** They have no scan position, so a redacted sheet of a multi-sheet ballot stays its own row (`n_redacted_in_multisheet_styles`, 0 in 2019–2025).
+* **Redacted ballots are not sheet-merged.** They have no scan position, so a redacted sheet of a multi-sheet ballot stays its own row (`n_redacted_in_multisheet_styles`, 0 in 2017–2025).
 
 ## Future work
 
@@ -158,7 +159,7 @@ The County protects ballot secrecy in two ways, and the cleaner treats them diff
 * **Datasette deployment** — `scripts.publish.build` is scaffolded; enable `publish.yml` once `VERCEL_TOKEN` is in repo secrets.
 * **Quarto site** under `docs/` — rendered to GitHub Pages via the disabled `gh-pages.yml`.
 * **2024 General Recount diff** — comparing it to the pre-recount version is precisely the NIST CDF *modified-snapshot* delta.
-* **Pre-2019 elections** if CORA-retrievable.
+* **Pre-2017 elections** if CORA-retrievable; the 2020 and 2022 primaries and the 2024 Presidential Primary.
 
 ## References
 
@@ -190,4 +191,4 @@ The County protects ballot secrecy in two ways, and the cleaner treats them diff
 
 ## License
 
-Code: MIT. Data: public records released by the Boulder County Clerk and Recorder (publicly posted 2023–2025; 2019–2022 obtained via Colorado Open Records Act disclosure). Per data-liberation convention, the data is republished here under CC-BY-4.0.
+Code: MIT. Data: public records released by the Boulder County Clerk and Recorder (publicly posted 2023–2025; 2017–2022 obtained via Colorado Open Records Act disclosure). Per data-liberation convention, the data is republished here under CC-BY-4.0.

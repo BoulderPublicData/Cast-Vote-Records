@@ -2,6 +2,16 @@
 
 Per-vintage notes on the underlying CVR files and any pipeline changes required to handle them.
 
+## New vintages: 2017 Coordinated, 2018 Primary (CSV) and 2018 General
+
+* **2018 General** (`2018-CVR.xlsx`, CORA request C000636-102626, released 2026-10-30): 349,870 rows → 349,795 ballot sheets after 75 aggregate rows (blank `CvrNumber`, as in 2019–2022) → **176,545 voters**, a two-sheet ballot in 46 styles (173,250 two-sheet voters, 3,295 one-sheet). 157 ballots were scanned back page first and merged by the complementary pass; an independent recount of the raw sheets gives the same 157. As in 2022, 2,864 rows are whole ballots on one row (a rare fingerprint filling every contest of the style), kept as one-sheet voters. The workbook's second sheet, `Supplemental Info`, is not read.
+* **Two CORA releases added**, the first in CSV rather than XLSX: `2017_Coordinated_Election_Public_CVR.csv` (94,503 rows → 94,480 voters, 23 aggregate rows dropped) and `2018_Primary_Election_Public_CVR.csv` (85,004 rows → 84,977 voters, 27 aggregate rows dropped). Both have one sheet per ballot and no single redacted ballots. The 2018 Primary came from request C000518-121923 (2023-12-19); the 2017 Coordinated from request C000636-102626 (released 2026-10-30).
+* **Same export, new file type.** Both use the four-row Dominion header, so `load_raw_cvr` reads CSV by extension and everything downstream is shared. `reconcile` reads CSV with the standard-library `csv` module, independently of the loader's pandas reader. Neither file has a `CountingGroup` column; `PrecinctPortion` is present.
+* **A new aggregate label.** Aggregate rows put the comma-separated list of summed CVR numbers in `CvrNumber` (`81883,81886,…`), which is now an explicit aggregate rule (`AGGREGATE_CVR_LIST_RE`) in the cleaner and in reconcile. Most of these rows also have a cell > 1, but the label rule doesn't depend on that.
+* **Checks.** Reconcile is ok for all eleven elections. Kept marks plus aggregate marks equal the Boulder County Statement of Votes exactly for every matched contest-choice: 67 in 2017, 63 in the 2018 General. No contest in any of the eleven files has more marks than its Vote For limit (37.2 million contest-ballots). The eight earlier per-voter CSVs and their cluster files rebuild byte-identically. Election-Results has no 2018 Primary SoV, so the 2018 Primary is reconciled against its original only.
+* **Storage.** The two CSVs were committed as ordinary git files. `.gitattributes` now stores `data/original/**/*.csv` in Git LFS like the XLSX originals; the bytes are unchanged.
+* **Clusters.** `clusters.ipynb` adds 2017 Coordinated (31,755 City of Boulder voters, 7 clusters) and 2018 General (57,214 voters, 11 clusters) panels; the 2018 Primary has no City of Boulder contests and is not clustered. The figure has nine panels in a 3×3 grid: elections with no City of Boulder contests (the 2018 and 2024 Primaries) get no panel instead of an empty one.
+
 ## Long runs outside the working tree; checks by change type
 
 * **`CVR_DATA_DIR`** points every path in `scripts/config.py`, and `clusters.ipynb`, at a copy of `data/`, so the 15-minute pipeline and the 20–30 minute notebook can run outside the repo and be committed once. Provenance still records `data/...` paths. From the 2026-10-26 AAR (P0-1).

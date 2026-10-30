@@ -1,4 +1,30 @@
 {
+  "2017_Coordinated_Election_Public_CVR.csv": {
+    "first_committed_at": "2026-10-30T19:40:17Z",
+    "obtained_at": "2026-10-30",
+    "retrieved_at": "",
+    "sha256": "45ebe0f7a2616f5c27efc614c56d1b8954a78cde36f6c13104dd21f01403879c",
+    "size": 15262601,
+    "source_last_modified": ""
+  },
+  "2018-CVR.xlsx": {
+    "first_committed_at": "2026-10-30T20:26:44Z",
+    "obtained_at": "2026-10-30",
+    "retrieved_at": "",
+    "sha256": "c5d9c4cd687abaeec4e012a0630f56c3c2b0bd439e5f06205a5f41d67ccaee5b",
+    "size": 71728730,
+    "source_last_modified": "",
+    "xlsx_created": "2019-12-13T15:30:15Z",
+    "xlsx_modified": "2019-12-13T16:07:57Z"
+  },
+  "2018_Primary_Election_Public_CVR.csv": {
+    "first_committed_at": "2026-10-30T19:40:17Z",
+    "obtained_at": "2023-12-19",
+    "retrieved_at": "",
+    "sha256": "e013c94c8a3cf7a7c7de7a400aa19ca732909051d6e7b51963bd4ea25f225af4",
+    "size": 8998188,
+    "source_last_modified": ""
+  },
   "2019-CVR.xlsx": {
     "first_committed_at": "2026-05-23T19:03:50Z",
     "obtained_at": "2023-12-19",

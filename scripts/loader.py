@@ -1,7 +1,9 @@
-"""Parse a Boulder County redacted CVR xlsx into a MultiIndex DataFrame.
+"""Parse a Boulder County redacted CVR (xlsx or csv) into a MultiIndex DataFrame.
 
 Boulder County uses Dominion Voting's tabulation system and exports each
-election's Cast Vote Records (CVRs) as an XLSX spreadsheet — Dominion's
+election's Cast Vote Records (CVRs) as an XLSX spreadsheet. The 2017
+Coordinated and 2018 Primary files released under CORA are the same export
+saved as CSV, with the identical four-row header — Dominion's
 proprietary format, not the [NIST Common Data Format Specification
 SP 1500-103](https://doi.org/10.6028/NIST.SP.1500-103). The Dominion XLSX is
 conceptually equivalent to the NIST CDF's *interpreted* CVR snapshot
@@ -10,7 +12,7 @@ the voter's marks. The *original* (pre-interpretation) and *modified*
 (post-adjudication) snapshots NIST also defines are not exposed in Boulder's
 public redacted exports.
 
-Every Boulder County CVR shares the same four-row prelude across 2019–2025:
+Every Boulder County CVR shares the same four-row prelude across 2017–2025:
 
 ==========  =====================================================
 row index   content
@@ -45,7 +47,8 @@ ImprintedId      ``CVR::BallotAuditId`` / composite             all
                  ballot-level comparison auditing (NIST §3.5.4)
 CountingGroup    Dominion-specific; counting universe           2019–2020,
                  (Regular, Provisional, Mail, etc.)             2022, 2024+
-PrecinctPortion  political-geography portion of the precinct    2019, 2021
+PrecinctPortion  political-geography portion of the precinct    2017–2019,
+                                                                2021
                  served by this ballot style
                  (cf. NIST ``BallotStyleUnit`` §3.5.6)
 BallotType       ``CVR::BallotStyleId`` (NIST §3.5.4.1) —       all
@@ -68,6 +71,7 @@ into the same numeric value.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -86,7 +90,7 @@ ID_LABELS: frozenset[str] = frozenset(
         "BallotType",
     }
 )
-"""All known ID-column labels across Boulder County CVRs 2019–2025."""
+"""All known ID-column labels across Boulder County CVRs 2017–2025."""
 
 SINGLE_BALLOT_SENTINELS: frozenset[str] = frozenset(
     {
@@ -116,9 +120,16 @@ AGGREGATE_SENTINELS: frozenset[str] = frozenset(
 marks of several ballots (cell values > 1). The cleaner classifies aggregates
 by pattern (label contains "Consolidated" or "Aggregated") or by value (any
 contest cell > 1), not by this exact list, so a new label in a future file is
-still handled. 2019–2022 aggregates carry ``NaN`` in ``CvrNumber`` and 2021
+still handled. 2017 and 2018 Primary aggregates carry the list of summed CVR
+numbers (:data:`AGGREGATE_CVR_LIST_RE`). 2019–2022 aggregates carry ``NaN`` in ``CvrNumber`` and 2021
 per-style summaries carry the ballot-style code (``"DS-01"``); both are
 caught by the value rule."""
+
+AGGREGATE_CVR_LIST_RE = re.compile(r"\s*\d+(?:\s*,\s*\d+)+\s*")
+"""2017 Coordinated and 2018 Primary aggregates carry, in ``CvrNumber``, the
+comma-separated list of the CVR numbers summed into the row
+(``"81883,81886,81888,…"``) instead of a text label. Match with
+``fullmatch``; the number of entries is the number of ballots aggregated."""
 
 REDACTED_VALUES: frozenset[str] = SINGLE_BALLOT_SENTINELS | AGGREGATE_SENTINELS
 """Every ``CvrNumber`` sentinel string observed across 2019–2025 (single-ballot
@@ -142,12 +153,15 @@ def repair_text(value: object) -> object:
 
 
 def load_raw_cvr(path: str | Path) -> pd.DataFrame:
-    """Read a CVR xlsx and reconstruct its column index.
+    """Read a CVR xlsx or csv and reconstruct its column index.
 
     Parameters
     ----------
     path
-        Filesystem path to the CVR ``.xlsx`` file.
+        Filesystem path to the CVR ``.xlsx`` file, or a ``.csv`` holding the
+        same four-row Dominion export (2017 Coordinated, 2018 Primary). CSV
+        cells are read as text; blanks become ``NaN``, as in the xlsx path,
+        and the cleaner coerces contest cells to numbers.
 
     Returns
     -------
@@ -169,7 +183,12 @@ def load_raw_cvr(path: str | Path) -> pd.DataFrame:
         raise LfsPointerError(
             f"{path} is a Git LFS pointer, not the spreadsheet. Run `git lfs pull` first."
         )
-    raw = pd.read_excel(path, header=None, engine="openpyxl")
+    if Path(path).suffix.lower() == ".csv":
+        raw = pd.read_csv(
+            path, header=None, dtype=str, keep_default_na=False, encoding="utf-8"
+        ).replace("", pd.NA)
+    else:
+        raw = pd.read_excel(path, header=None, engine="openpyxl")
     if len(raw) < 5:
         raise ValueError(f"{path}: fewer than 5 rows; not a Boulder County CVR")
 

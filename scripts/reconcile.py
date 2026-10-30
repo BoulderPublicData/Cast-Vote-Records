@@ -30,6 +30,7 @@ the interpreted-snapshot encoding all move CVR totals slightly.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import re
 import sys
@@ -55,6 +56,7 @@ _ID_LABELS = {
     "BallotType",
 }
 _AGGREGATE_RE = re.compile(r"consolidat|aggregat", re.IGNORECASE)
+_CVR_LIST_RE = re.compile(r"\s*\d+(?:\s*,\s*\d+)+\s*")  # 2017/2018: summed CVR numbers
 
 
 def _fix(text: object) -> object:
@@ -63,7 +65,16 @@ def _fix(text: object) -> object:
 
 
 def _read_original(path: Path) -> pd.DataFrame:
-    """Read the xlsx with calamine (independent of the loader's openpyxl)."""
+    """Read the original independently of the loader: xlsx with calamine (the
+    loader uses openpyxl), csv with the standard-library reader (the loader
+    uses pandas)."""
+    if path.suffix.lower() == ".csv":
+        with open(path, newline="", encoding="utf-8") as fh:
+            rows = list(csv.reader(fh))
+        width = max(len(r) for r in rows)
+        return pd.DataFrame(
+            [[(v if v != "" else None) for v in r] + [None] * (width - len(r)) for r in rows]
+        )
     try:
         return pd.read_excel(path, header=None, engine="calamine")
     except ImportError:  # pragma: no cover - calamine is a core dependency
@@ -94,7 +105,9 @@ def independent_counts(path: Path) -> dict:
         pd.to_numeric(cvr, errors="coerce").isna() | pd.to_numeric(tab, errors="coerce").isna()
     )
     values = body.iloc[:, contest_pos].apply(pd.to_numeric, errors="coerce")
-    by_label = cvr.astype("string").str.contains(_AGGREGATE_RE, na=False)
+    by_label = cvr.astype("string").str.contains(_AGGREGATE_RE, na=False) | cvr.astype(
+        "string"
+    ).str.fullmatch(_CVR_LIST_RE, na=False)
     by_value = (values > 1).any(axis=1)
     aggregate = redacted & (by_label | by_value)
 
