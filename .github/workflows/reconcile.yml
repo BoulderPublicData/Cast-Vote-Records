@@ -2,11 +2,12 @@ name: reconcile
 
 # Re-derives every published count from the originals. Unlike `tests`, this
 # needs real Git LFS objects, so it is limited three ways to save LFS bandwidth:
-#   1. it runs only when the originals, the per-voter outputs or the pipeline
-#      code change (or by hand from the Actions tab);
+#   1. it runs only when the originals, the per-voter outputs, the lookups
+#      (sov-exceptions.csv) or the pipeline code change (or by hand from the
+#      Actions tab);
 #   2. it pulls only the files reconcile reads: the processed originals and
-#      data/processed/cast-vote-records/ (not the clusters or the archived
-#      CORA copy of 2023), about 560 MB instead of about 700 MB;
+#      data/processed/cast-vote-records/ (not the clusters or the two archived
+#      originals: the CORA copy of 2023 and the 2024 General recount CVR);
 #   3. the LFS objects are cached, so a run whose files haven't changed
 #      downloads nothing from LFS.
 
@@ -16,6 +17,7 @@ on:
     paths:
       - "data/original/**"
       - "data/processed/cast-vote-records/**"
+      - "data/lookups/**"
       - "scripts/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -25,6 +27,7 @@ on:
     paths:
       - "data/original/**"
       - "data/processed/cast-vote-records/**"
+      - "data/lookups/**"
       - "scripts/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -41,7 +44,7 @@ concurrency:
 
 env:
   LFS_INCLUDE: "data/original/**,data/processed/cast-vote-records/**"
-  LFS_EXCLUDE: "data/original/2023-CVR.xlsx"
+  LFS_EXCLUDE: "data/original/2023-CVR.xlsx,data/original/2024-General-Recount-CVR.xlsx"
 
 jobs:
   reconcile:

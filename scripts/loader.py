@@ -12,7 +12,7 @@ the voter's marks. The *original* (pre-interpretation) and *modified*
 (post-adjudication) snapshots NIST also defines are not exposed in Boulder's
 public redacted exports.
 
-Every Boulder County CVR shares the same four-row prelude across 2017–2025:
+Every Boulder County CVR shares the same four-row prelude across 2017–2026:
 
 ==========  =====================================================
 row index   content
@@ -90,11 +90,11 @@ ID_LABELS: frozenset[str] = frozenset(
         "BallotType",
     }
 )
-"""All known ID-column labels across Boulder County CVRs 2017–2025."""
+"""All known ID-column labels across Boulder County CVRs 2017–2026."""
 
 SINGLE_BALLOT_SENTINELS: frozenset[str] = frozenset(
     {
-        "Redacted",  # 2024 Primary, 2025 Coordinated
+        "Redacted",  # 2024 Presidential Primary, 2024 Primary, 2025, 2026 Primary
         "RCV Redacted & Randomly Sorted",  # 2023 Coordinated
     }
 )
@@ -112,8 +112,10 @@ AGGREGATE_SENTINELS: frozenset[str] = frozenset(
         "Redacted and Aggregated - B cards or Property Owner Ballot",  # 2024 General
         "Redacted and Consolidated",  # 2024 Primary
         "Redacted and Consolidated 10 Ballots",  # 2025 Coordinated
-        "Redacted and Consolidated 18 Ballots",  # 2025 Coordinated
+        "Redacted and Consolidated 18 Ballots",  # 2025 Coordinated, 2026 Primary
         "Redacted and Consolidated 20 Ballots",  # 2025 Coordinated
+        "Redacted and Consolidated 9 Ballots",  # 2026 Primary
+        "Redacted and Consolidated 23 Ballots",  # 2026 Primary
     }
 )
 """``CvrNumber`` strings observed on **aggregate** rows: one row summing the
@@ -132,7 +134,7 @@ comma-separated list of the CVR numbers summed into the row
 ``fullmatch``; the number of entries is the number of ballots aggregated."""
 
 REDACTED_VALUES: frozenset[str] = SINGLE_BALLOT_SENTINELS | AGGREGATE_SENTINELS
-"""Every ``CvrNumber`` sentinel string observed across 2019–2025 (single-ballot
+"""Every ``CvrNumber`` sentinel string observed across 2017–2026 (single-ballot
 and aggregate). Informational; see :func:`scripts.cleaner.split_redacted` for
 the classification rule."""
 

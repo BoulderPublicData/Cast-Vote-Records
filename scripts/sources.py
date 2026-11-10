@@ -10,8 +10,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-ELECTION_TYPES: tuple[str, ...] = ("general", "primary", "coordinated")
-"""Shared election-type vocabulary with Election-Results."""
+ELECTION_TYPES: tuple[str, ...] = ("general", "primary", "coordinated", "presidential_primary")
+"""Shared election-type vocabulary with Election-Results. ``presidential_primary``
+is the March presidential preference primary (2024), distinct from the June
+state ``primary``."""
+
+
+def election_key_for(year: int, election_type: str) -> str:
+    """``{year}-{type}`` with underscores as hyphens: ``2024-general``,
+    ``2024-presidential-primary``."""
+    return f"{year}-{election_type.replace('_', '-')}"
 
 
 @dataclass(frozen=True)
@@ -19,14 +27,16 @@ class CvrSource:
     """One election's CVR file and provenance."""
 
     election_key: str
-    """``{year}-{election_type}``, lowercase (e.g. ``2023-coordinated``): the
-    same key format as BoulderPublicData/Election-Results. Used in output
+    """``{year}-{election_type}``, lowercase, underscores as hyphens (e.g.
+    ``2023-coordinated``, ``2024-presidential-primary``; see
+    :func:`election_key_for`): the same key format as
+    BoulderPublicData/Election-Results. Used in output
     filenames, ``_summary.csv``/``provenance.csv`` and the CLI ``-e`` flag."""
 
     year: int
     election_type: str
     """One of :data:`ELECTION_TYPES`: ``coordinated`` (odd-year, municipal),
-    ``general`` or ``primary``."""
+    ``general``, ``primary`` or ``presidential_primary``."""
 
     filename: str
     """Filename inside ``data/original/`` (not a path)."""
@@ -65,6 +75,10 @@ class ArchivedOriginal:
     filename: str
     notes: str
     obtained_at: str = ""
+    public_url: str | None = None
+    """Direct download URL if the County posted the file; ``scripts.fetch``
+    downloads it when missing, as for :class:`CvrSource`."""
+    source_page: str | None = None
 
 
 ARCHIVED_ORIGINALS: tuple[ArchivedOriginal, ...] = (
@@ -79,6 +93,25 @@ ARCHIVED_ORIGINALS: tuple[ArchivedOriginal, ...] = (
             "because it would duplicate the public file; kept so the CORA "
             "release is archived."
         ),
+    ),
+    ArchivedOriginal(
+        "2024-General-Recount-CVR.xlsx",
+        notes=(
+            "2024 General post-recount CVR, posted by the County as "
+            "2024-Boulder-County-General-Recount-Redacted-Cast-Vote-Record.xlsx "
+            '(workbook title "2024 Boulder County GE Recounts"). 25,438 sheets '
+            '(8 "Redacted and Aggregated" rows): only the ballots included in the '
+            "2024-12-03/04 recounts (Town of Erie Council Member District 1, Town "
+            "of Superior Trustee; State House District 19 did not change), not the "
+            "whole county. In NIST CDF terms "
+            "(SP 1500-103 §3.3) it corresponds to the *modified* snapshot. Not "
+            "processed: 2024-general is the pre-recount countywide CVR. Its kept "
+            "plus aggregate marks equal the County's amended Statement of Votes "
+            "for every name-matched choice of both recounted contests (see "
+            "data/lookups/sov-exceptions.csv)."
+        ),
+        public_url="https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Recount-Redacted-Cast-Vote-Record.xlsx",
+        source_page="https://bouldercounty.gov/elections/by-year/2024-election/",
     ),
 )
 """Originals that are archived but deliberately not in :data:`SOURCES`."""
@@ -192,6 +225,20 @@ SOURCES: tuple[CvrSource, ...] = (
         notes="First publicly posted Boulder County CVR.",
     ),
     CvrSource(
+        "2024-presidential-primary",
+        2024,
+        "presidential_primary",
+        "2024-Presidential-Primary-CVR.xlsx",
+        public_url="https://assets.bouldercounty.gov/wp-content/uploads/2024/03/CVR-2024PPE-Final.xlsx",
+        source_page="https://bouldercounty.gov/elections/by-year/2024-election/",
+        notes=(
+            "Presidential primary (2024-03-05), posted as CVR-2024PPE-Final.xlsx. "
+            "Two contests (President of the United States, DEM and REP); no City "
+            "of Boulder contests (City-level analyses skip it). Countywide rows "
+            "retained. BallotType is the party (DEM/REP)."
+        ),
+    ),
+    CvrSource(
         "2024-primary",
         2024,
         "primary",
@@ -214,8 +261,9 @@ SOURCES: tuple[CvrSource, ...] = (
             "Pre-recount version. In NIST CDF terms (SP 1500-103 §3.3) this is "
             "the *interpreted* snapshot; the County also published a separate "
             "post-recount CVR that would correspond to the *modified* snapshot "
-            "(adjudication-driven changes). Excluded by design — the pre-recount "
-            "version is the input most other published analyses use."
+            "(adjudication-driven changes). The pre-recount version is the input "
+            "most other published analyses use; the post-recount file is archived "
+            "unprocessed as 2024-General-Recount-CVR.xlsx."
         ),
     ),
     CvrSource(
@@ -226,6 +274,19 @@ SOURCES: tuple[CvrSource, ...] = (
         public_url="https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx",
         source_page="https://bouldercounty.gov/elections/by-year/2025-election/",
         notes="",
+    ),
+    CvrSource(
+        "2026-primary",
+        2026,
+        "primary",
+        "2026-Primary-CVR.xlsx",
+        public_url="https://assets.bouldercounty.gov/wp-content/uploads/2026/07/2026P-Redacted-CVR-Public.xlsx",
+        source_page="https://bouldercounty.gov/elections/by-year/2026-election/",
+        notes=(
+            "Partisan state primary (2026-06-30), posted 2026-07-23 as "
+            "2026P-Redacted-CVR-Public.xlsx; no City of Boulder contests (City-level "
+            "analyses skip it). Countywide rows retained."
+        ),
     ),
 )
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from scripts.sources import ARCHIVED_ORIGINALS, SOURCES, get_source
@@ -58,7 +60,27 @@ def test_election_keys_follow_the_shared_format():
 
     for src in SOURCES:
         assert src.election_type in ELECTION_TYPES, src
-        assert src.election_key == f"{src.year}-{src.election_type}", src
+        assert src.election_key == f"{src.year}-{src.election_type.replace('_', '-')}", src
+        assert re.fullmatch(
+            r"\d{4}-(general|primary|coordinated|presidential-primary)", src.election_key
+        ), src
+
+
+def test_presidential_primary_key():
+    """`presidential_primary` is the type; the key spells it with hyphens (#34)."""
+    from scripts.sources import ELECTION_TYPES, election_key_for
+
+    assert "presidential_primary" in ELECTION_TYPES
+    assert election_key_for(2024, "presidential_primary") == "2024-presidential-primary"
+    assert election_key_for(2024, "general") == "2024-general"
+    assert get_source("2024-presidential-primary").election_type == "presidential_primary"
+
+
+def test_archived_originals_with_a_url_record_their_page():
+    for arc in ARCHIVED_ORIGINALS:
+        if arc.public_url:
+            assert arc.public_url.startswith("https://assets.bouldercounty.gov/"), arc
+            assert arc.source_page, arc
 
 
 def test_old_style_key_gets_a_hint():
@@ -69,4 +91,8 @@ def test_old_style_key_gets_a_hint():
 def test_sources_for_years():
     from scripts.sources import sources_for_years
 
-    assert [s.election_key for s in sources_for_years([2024])] == ["2024-primary", "2024-general"]
+    assert [s.election_key for s in sources_for_years([2024])] == [
+        "2024-presidential-primary",
+        "2024-primary",
+        "2024-general",
+    ]

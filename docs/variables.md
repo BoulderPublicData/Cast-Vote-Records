@@ -1210,6 +1210,34 @@ Mechanical profile of every column in every processed CSV. Sampled on the first 
 | 2024-general | `_ID/n_sheets` | id | int64 | 2 | 0.0 |
 | 2024-general | `_ID/voter_id` | id | str | 5000 | 0.0 |
 | 2024-general | `_ID/redacted` | id | bool | 1 | 0.0 |
+| 2024-presidential-primary | `_ID/CvrNumber` | id | int64 | 5000 | 0.0 |
+| 2024-presidential-primary | `_ID/TabulatorNum` | id | int64 | 1 | 0.0 |
+| 2024-presidential-primary | `_ID/BatchId` | id | int64 | 34 | 0.0 |
+| 2024-presidential-primary | `_ID/RecordId` | id | int64 | 150 | 0.0 |
+| 2024-presidential-primary | `_ID/ImprintedId` | id | str | 5000 | 0.0 |
+| 2024-presidential-primary | `_ID/BallotType` | id | str | 2 | 0.0 |
+| 2024-presidential-primary | `President of the United States - DEM (Vote For=1)::Jason Michael Palmer` | contest | float64 | 2 | 36.1 |
+| 2024-presidential-primary | `President of the United States - DEM (Vote For=1)::Gabriel Cornejo` | contest | float64 | 2 | 36.1 |
+| 2024-presidential-primary | `President of the United States - DEM (Vote For=1)::Frankie Lozada` | contest | float64 | 2 | 36.1 |
+| 2024-presidential-primary | `President of the United States - DEM (Vote For=1)::Dean Phillips` | contest | float64 | 2 | 36.1 |
+| 2024-presidential-primary | `President of the United States - DEM (Vote For=1)::Stephen P Lyons` | contest | float64 | 2 | 36.1 |
+| 2024-presidential-primary | `President of the United States - DEM (Vote For=1)::Marianne Williamson` | contest | float64 | 2 | 36.1 |
+| 2024-presidential-primary | `President of the United States - DEM (Vote For=1)::Joseph R Biden Jr` | contest | float64 | 2 | 36.1 |
+| 2024-presidential-primary | `President of the United States - DEM (Vote For=1)::Armando "Mando" Perez-Serrato` | contest | float64 | 2 | 36.1 |
+| 2024-presidential-primary | `President of the United States - DEM (Vote For=1)::Noncommitted delegate` | contest | float64 | 2 | 36.1 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Vivek Ramaswamy` | contest | float64 | 2 | 63.9 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Asa Hutchinson` | contest | float64 | 2 | 63.9 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Nikki Haley` | contest | float64 | 2 | 63.9 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Ron DeSantis` | contest | float64 | 2 | 63.9 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Chris Christie` | contest | float64 | 2 | 63.9 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Ryan L Binkley` | contest | float64 | 2 | 63.9 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Donald J. Trump` | contest | float64 | 2 | 63.9 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Write-in` | contest | float64 | 1 | 63.9 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Rachel Hannah "Mohawk" Swift` | contest | float64 | 1 | 63.9 |
+| 2024-presidential-primary | `President of the United States - REP (Vote For=1)::Walter Iwachiw` | contest | float64 | 1 | 63.9 |
+| 2024-presidential-primary | `_ID/n_sheets` | id | int64 | 1 | 0.0 |
+| 2024-presidential-primary | `_ID/voter_id` | id | str | 5000 | 0.0 |
+| 2024-presidential-primary | `_ID/redacted` | id | bool | 1 | 0.0 |
 | 2024-primary | `_ID/CvrNumber` | id | int64 | 5000 | 0.0 |
 | 2024-primary | `_ID/TabulatorNum` | id | int64 | 1 | 0.0 |
 | 2024-primary | `_ID/BatchId` | id | int64 | 51 | 0.0 |
@@ -1340,3 +1368,65 @@ Mechanical profile of every column in every processed CSV. Sampled on the first 
 | 2025-coordinated | `_ID/n_sheets` | id | int64 | 1 | 0.0 |
 | 2025-coordinated | `_ID/voter_id` | id | str | 5000 | 0.0 |
 | 2025-coordinated | `_ID/redacted` | id | bool | 1 | 0.0 |
+| 2026-primary | `_ID/CvrNumber` | id | int64 | 5000 | 0.0 |
+| 2026-primary | `_ID/TabulatorNum` | id | int64 | 1 | 0.0 |
+| 2026-primary | `_ID/BatchId` | id | int64 | 53 | 0.0 |
+| 2026-primary | `_ID/RecordId` | id | int64 | 100 | 0.0 |
+| 2026-primary | `_ID/ImprintedId` | id | str | 5000 | 0.0 |
+| 2026-primary | `_ID/CountingGroup` | id | str | 1 | 0.0 |
+| 2026-primary | `_ID/BallotType` | id | int64 | 12 | 0.0 |
+| 2026-primary | `United States Senator - DEM (Vote For=1)::Julie Gonzales` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `United States Senator - DEM (Vote For=1)::John Hickenlooper` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Representative to the 120th United States Congress - District 2 - DEM (Vote For=1)::Joe Neguse` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Governor - DEM (Vote For=1)::Phil Weiser` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Governor - DEM (Vote For=1)::Michael Bennet` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Secretary of State - DEM (Vote For=1)::Amanda Gonzalez` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Secretary of State - DEM (Vote For=1)::Jessie Danielson` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `State Treasurer - DEM (Vote For=1)::Jeff Bridges` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Attorney General - DEM (Vote For=1)::Jena Griswold` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Attorney General - DEM (Vote For=1)::David Seligman` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Attorney General - DEM (Vote For=1)::Michael Dougherty` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Attorney General - DEM (Vote For=1)::Hetal Doshi` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Regent of the University of Colorado - Congressional District 2 - DEM (Vote For=1)::Kubs Lalchandani` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Regent of the University of Colorado - Congressional District 2 - DEM (Vote For=1)::Edie Hooton` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Regent of the University of Colorado - Congressional District 2 - DEM (Vote For=1)::Murray Smith` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `State Senator - District 15 - DEM (Vote For=1)::Janice Marchman` | contest | float64 | 2 | 94.0 |
+| 2026-primary | `State Senator - District 17 - DEM (Vote For=1)::Katie Wallace` | contest | float64 | 2 | 54.4 |
+| 2026-primary | `State Representative - District 10 - DEM (Vote For=1)::Junie Joseph` | contest | float64 | 2 | 78.9 |
+| 2026-primary | `State Representative - District 11 - DEM (Vote For=1)::Karen McCormick` | contest | float64 | 2 | 76.4 |
+| 2026-primary | `State Representative - District 12 - DEM (Vote For=1)::Kyle Brown` | contest | float64 | 2 | 77.1 |
+| 2026-primary | `State Representative - District 19 - DEM (Vote For=1)::Anil Pesaramelli` | contest | float64 | 2 | 90.4 |
+| 2026-primary | `State Representative - District 19 - DEM (Vote For=1)::Jillaire McMillan` | contest | float64 | 2 | 90.4 |
+| 2026-primary | `State Representative - District 19 - DEM (Vote For=1)::Colton Jonjak Plahn` | contest | float64 | 2 | 90.4 |
+| 2026-primary | `State Representative - District 49 - DEM (Vote For=1)::Lesley Smith` | contest | float64 | 2 | 86.3 |
+| 2026-primary | `Boulder County Commissioner - District 3 - DEM (Vote For=1)::Ashley Stolzmann` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Boulder County Clerk and Recorder - DEM (Vote For=1)::Molly Fitzpatrick` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Boulder County Treasurer - DEM (Vote For=1)::Jenn Kaaoush` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Boulder County Treasurer - DEM (Vote For=1)::Rachel Friend` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Boulder County Assessor - DEM (Vote For=1)::Cynthia Braddock` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Boulder County Sheriff - DEM (Vote For=1)::Curtis Johnson` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Boulder County Surveyor - DEM (Vote For=1)::Kayce D. W. Keane` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Boulder County Coroner - DEM (Vote For=1)::Jeff Martin` | contest | float64 | 2 | 9.0 |
+| 2026-primary | `Secretary of State - LBR (Vote For=1)::Sean Vadney` | contest | float64 | 0 | 100.0 |
+| 2026-primary | `Secretary of State - LBR (Vote For=1)::Alex Astley` | contest | float64 | 0 | 100.0 |
+| 2026-primary | `United States Senator - REP (Vote For=1)::Mark Baisley` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `Representative to the 120th United States Congress - District 2 - REP (Vote For=1)::Kelley Anne Dennison` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `Representative to the 120th United States Congress - District 2 - REP (Vote For=1)::Christina Blunt (Ducommun)` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `Governor - REP (Vote For=1)::Scott Bottoms` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `Governor - REP (Vote For=1)::Victor Marx` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `Governor - REP (Vote For=1)::Barb Kirkmeyer` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `Governor - REP (Vote For=1)::Write-In` | contest | float64 | 1 | 91.0 |
+| 2026-primary | `Governor - REP (Vote For=1)::Kelvin "K-Man" Wimberly` | contest | float64 | 1 | 91.0 |
+| 2026-primary | `Secretary of State - REP (Vote For=1)::James Wiley` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `State Treasurer - REP (Vote For=1)::Kevin Grantham` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `Attorney General - REP (Vote For=1)::Michael J. Allen` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `Attorney General - REP (Vote For=1)::David Willson` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `Regent of the University of Colorado - Congressional District 2 - REP (Vote For=1)::Marty Neilson` | contest | float64 | 2 | 91.0 |
+| 2026-primary | `State Senator - District 15 - REP (Vote For=1)::Rob Woodward` | contest | float64 | 2 | 98.9 |
+| 2026-primary | `State Senator - District 17 - REP (Vote For=1)::Pat Miller` | contest | float64 | 2 | 93.7 |
+| 2026-primary | `State Representative - District 12 - REP (Vote For=1)::Ryan Rhatigan` | contest | float64 | 2 | 99.3 |
+| 2026-primary | `State Representative - District 19 - REP (Vote For=1)::Dan Woog` | contest | float64 | 2 | 98.7 |
+| 2026-primary | `State Representative - District 49 - REP (Vote For=1)::Michael Sheperek` | contest | float64 | 2 | 98.9 |
+| 2026-primary | `_ID/n_sheets` | id | int64 | 1 | 0.0 |
+| 2026-primary | `_ID/voter_id` | id | str | 5000 | 0.0 |
+| 2026-primary | `_ID/redacted` | id | bool | 1 | 0.0 |

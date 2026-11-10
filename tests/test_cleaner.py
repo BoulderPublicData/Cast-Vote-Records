@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from scripts.cleaner import (
+    aggregate_ballot_count,
     clean_countywide,
     coerce_contest_values,
     combine_multisheet,
@@ -452,3 +453,84 @@ def test_clean_countywide_rejects_text_cells():
     df[("Contest 1 (Vote For=1)", "A")] = ["X"]
     with pytest.raises(ValueError, match="non-numeric"):
         clean_countywide(df, election_key="t")
+
+
+# ---------------------------------------------------------------------------
+# Aggregate side table (#33)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [
+        ("Redacted and Consolidated 18 Ballots", 18),
+        ("Redacted and Consolidated 9 Ballots", 9),
+        ("81883,81886,81888", 3),
+        ("69676, 69680", 2),
+        ("Redacted & Aggregated", None),
+        ("Redacted and Aggregated - A cards", None),
+        ("DS-01", None),
+        (np.nan, None),
+        (None, None),
+    ],
+)
+def test_aggregate_ballot_count(label, expected):
+    assert aggregate_ballot_count(label) == expected
+
+
+def test_aggregate_side_table_keeps_every_aggregate(minimal_cvr_path):
+    res = clean_countywide(load_raw_cvr(minimal_cvr_path), election_key="t")
+    agg = res.aggregates
+    assert len(agg) == res.n_aggregate_rows_dropped == 4
+    assert agg["_ID/aggregate"].all()
+    assert agg["_ID/aggregate_id"].tolist() == [f"aggregate-00{i}" for i in range(1, 5)]
+    assert agg["_ID/CvrNumber"].tolist()[:2] == [
+        "Redacted & Aggregated",
+        "Redacted and Consolidated 10 Ballots",
+    ]
+    assert agg["_ID/n_ballots"].tolist()[1] == 10
+    assert agg["_ID/n_ballots"].isna().sum() == 3
+    assert agg["_ID/aggregate_rule"].tolist() == ["label", "label", "values", "values"]
+    # Same contest columns, in the same order, as the per-voter output.
+    voter_contests = [c for c in res.cleaned.columns if not c.startswith("_ID/")]
+    agg_contests = [c for c in agg.columns if not c.startswith("_ID/")]
+    assert agg_contests == voter_contests
+    # Marks are counts: Alice 1 + 3 + 4, Dana 6 (the 10-ballot row).
+    assert agg["City of Boulder Council Candidates (Vote For=1)::Alice"].sum() == 8
+    assert agg["City of Longmont - Mayor (Vote For=1)::Dana"].sum() == 6
+    assert res.n_aggregate_marks == 30
+    assert res.n_aggregate_rows_with_count == 1
+    assert res.n_aggregate_ballots_labelled == 10
+
+
+def test_aggregate_side_table_writes_counts_as_integers(minimal_cvr_path, tmp_path):
+    res = clean_countywide(load_raw_cvr(minimal_cvr_path), election_key="t")
+    out = tmp_path / "agg.csv"
+    res.aggregates.to_csv(out, index=False)
+    text = out.read_text()
+    assert ".0," not in text
+    assert pd.read_csv(out)["_ID/aggregate"].all()
+
+
+def test_aggregate_only_column_is_kept_in_side_table():
+    """A contest marked only in aggregates is dropped from the per-voter CSV
+    (all blank there) but must stay in the side table."""
+    df = make_sheets([(1, 100, 1, "01", 1), (2, 100, 2, "01", 1)])
+    df[("Only Agg (Vote For=1)", "Y")] = np.nan
+    agg = df.iloc[[0]].copy()
+    agg[("_ID", "CvrNumber")] = "Redacted and Consolidated 12 Ballots"
+    agg[("_ID", "TabulatorNum")] = np.nan
+    agg[("Only Agg (Vote For=1)", "Y")] = 7
+    df = pd.concat([df, agg], ignore_index=True)
+    res = clean_countywide(df, election_key="t")
+    assert "Only Agg (Vote For=1)::Y" not in res.cleaned.columns
+    assert res.aggregates["Only Agg (Vote For=1)::Y"].tolist() == [7]
+    assert res.n_aggregate_ballots_labelled == 12
+
+
+def test_no_aggregates_gives_an_empty_side_table():
+    df = make_sheets([(1, 100, 1, "01", 1), (2, 100, 2, "01", 1)])
+    res = clean_countywide(df, election_key="t")
+    assert len(res.aggregates) == 0
+    assert res.n_aggregate_marks == 0
+    assert res.n_aggregate_ballots_labelled == 0

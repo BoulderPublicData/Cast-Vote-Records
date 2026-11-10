@@ -57,6 +57,15 @@ def test_clean_emits_per_voter_csv_for_multisheet_fixture(
     assert (proc_dir / "provenance.csv").exists()
     assert (proc_dir / "_summary.csv").exists()
 
+    # The aggregate row goes to the side table, recorded in summary and provenance (#33).
+    agg = proc_dir / "2023-coordinated-aggregate-rows.csv"
+    assert len(pd.read_csv(agg)) == 1
+    assert int(row["n_aggregate_marks"]) > 0
+    prov = pd.read_csv(proc_dir / "provenance.csv").set_index("election_key")
+    assert prov.loc["2023-coordinated", "aggregate_rows_path"].endswith(
+        "2023-coordinated-aggregate-rows.csv"
+    )
+
     # Written types: BallotType text, marks as integers (#18)
     text = out.read_text()
     assert ",1.0," not in text and ",0.0," not in text
