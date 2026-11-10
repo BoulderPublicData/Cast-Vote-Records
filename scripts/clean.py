@@ -8,10 +8,15 @@ Outputs:
 * ``data/processed/cast-vote-records/<election_key>-county-wide-by-voter.csv`` — one per
   election, one row per **voter** (multi-sheet ballots merged), all ballots
   in the county (no jurisdiction filter).
+* ``data/processed/cast-vote-records/<election_key>-aggregate-rows.csv`` — the
+  aggregate rows (several ballots summed into one row for privacy) that the
+  per-voter CSV leaves out, with their marks as counts, ``CvrNumber`` label,
+  ballot count when the label gives one, and ``_ID/aggregate = True``. Only
+  written when the election has aggregates.
 * ``data/processed/cast-vote-records/provenance.csv`` — one row per processed artifact with
   source URL, retrieved-at time, SHA-256, output path, row counts.
 * ``data/processed/cast-vote-records/_summary.csv`` — bookkeeping (n raw, aggregate rows
-  dropped, single-ballot redacted rows kept, n sheets, n voters, out-of-order
+  moved to the side table, their labelled ballot counts and marks, single-ballot redacted rows kept, n sheets, n voters, out-of-order
   merges, rare-fingerprint sheets, multi-sheet ballot types, sheet-count
   distribution).
 
@@ -45,6 +50,11 @@ from .sources import SOURCES, get_source, sources_for_years
 
 def _wide_csv_path(election_key: str):
     return config.CVR_DIR / f"{election_key}-county-wide-by-voter.csv"
+
+
+def aggregate_csv_path(election_key: str):
+    """The side table of aggregate rows for one election (#33)."""
+    return config.CVR_DIR / f"{election_key}-aggregate-rows.csv"
 
 
 def upsert_csv(path, new_rows: pd.DataFrame, *, key: str = "election_key") -> pd.DataFrame:
@@ -159,11 +169,17 @@ def clean(
                     f"{res.n_voters:,} voters × "
                     f"{res.n_choice_columns} choice cols  "
                     f"({dist}; {res.n_redacted_kept:,} redacted kept, "
-                    f"{res.n_aggregate_rows_dropped:,} aggregates dropped, "
+                    f"{res.n_aggregate_rows_dropped:,} aggregates to the side table, "
                     f"{res.n_out_of_order_merges:,} out-of-order merges) "
                     f"→ {out_path.name}",
                     flush=True,
                 )
+
+        agg_path = aggregate_csv_path(src.election_key)
+        if len(res.aggregates):
+            res.aggregates.to_csv(agg_path, index=False)
+        elif agg_path.exists():
+            agg_path.unlink()  # no aggregates in this file: don't leave a stale table
 
         for w in res.warnings:
             all_warnings.append(f"[{src.election_key}] {w}")
@@ -176,6 +192,9 @@ def clean(
                 "election_type": src.election_type,
                 "n_raw_rows": res.n_raw_rows,
                 "n_aggregate_rows_dropped": res.n_aggregate_rows_dropped,
+                "n_aggregate_rows_with_count": res.n_aggregate_rows_with_count,
+                "n_aggregate_ballots_labelled": res.n_aggregate_ballots_labelled,
+                "n_aggregate_marks": res.n_aggregate_marks,
                 "n_redacted_kept": res.n_redacted_kept,
                 "n_redacted_in_multisheet_styles": res.n_redacted_in_multisheet_styles,
                 "n_sheets_after_redaction": res.n_sheets_after_redaction,
@@ -208,6 +227,11 @@ def clean(
                 "processed_path": (
                     str(out_path.relative_to(config.CVR_DIR.parent.parent.parent))
                     if res.n_voters
+                    else ""
+                ),
+                "aggregate_rows_path": (
+                    str(agg_path.relative_to(config.CVR_DIR.parent.parent.parent))
+                    if len(res.aggregates)
                     else ""
                 ),
                 "extracted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

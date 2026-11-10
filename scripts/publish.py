@@ -57,6 +57,13 @@ def build(verbose: bool = True):
         if verbose:
             print(f"  inserted {len(df):,} rows into table '{table_name}'")
 
+    for csv in sorted(CVR_DIR.glob("*-aggregate-rows.csv")):
+        table_name = csv.name.removesuffix(".csv").replace("-", "_").lower()
+        df = pd.read_csv(csv, low_memory=False, dtype={"_ID/BallotType": str, "_ID/CvrNumber": str})
+        db[table_name].insert_all(df.to_dict(orient="records"))  # type: ignore[union-attr]
+        if verbose:
+            print(f"  inserted {len(df):,} rows into table '{table_name}'")
+
     if PROVENANCE_CSV.exists():
         prov = pd.read_csv(PROVENANCE_CSV)
         db["provenance"].insert_all(prov.to_dict(orient="records"))  # type: ignore[union-attr]
@@ -91,7 +98,12 @@ def _write_metadata(verbose: bool) -> None:
         lines.append(f"      {table_name}:")
         lines.append(
             f"        description: 'Per-voter ballots from the "
-            f"{src.year} {src.election_type} election (countywide).'"
+            f"{src.year} {src.election_type.replace('_', ' ')} election (countywide).'"
+        )
+        lines.append(f"      {table_name}_aggregate_rows:")
+        lines.append(
+            "        description: 'Aggregate rows (several ballots summed for privacy) "
+            "left out of the per-voter table; marks are counts.'"
         )
     lines.append("      provenance:")
     lines.append("        description: 'Source URL, SHA-256 and retrieval time per file.'")

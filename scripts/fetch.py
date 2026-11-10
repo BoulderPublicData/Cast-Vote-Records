@@ -1,6 +1,7 @@
 """Idempotent downloader + SHA-256 manifest verifier.
 
 Downloads any CVR with a public URL that is missing from ``data/original/``
+(processed sources and archived originals alike)
 and checks every file in ``data/original/`` against
 ``data/original/manifest.json``.
 
@@ -184,14 +185,19 @@ def verify_manifest(
 def download_one(src, *, force: bool = False) -> dict[str, str] | None:
     """Download ``src.public_url`` to ``data/original/<src.filename>`` if missing.
 
+    ``src`` is a :class:`~scripts.sources.CvrSource` or an
+    :class:`~scripts.sources.ArchivedOriginal` (archived files with a public
+    URL are fetched too, but never processed).
+
     Returns the manifest fields to record (``retrieved_at``,
     ``source_last_modified``) if a new download happened, ``None`` if skipped.
     """
     dest = config.ORIGINAL_DIR / src.filename
+    label = getattr(src, "election_key", src.filename)
     if src.public_url is None:
         if not dest.exists():
             print(
-                f"  [warn] {src.election_key}: no public URL and file missing "
+                f"  [warn] {label}: no public URL and file missing "
                 f"at {dest}. Place the CORA disclosure here manually.",
                 file=sys.stderr,
             )
@@ -201,7 +207,7 @@ def download_one(src, *, force: bool = False) -> dict[str, str] | None:
         return None
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    print(f"  fetching {src.election_key} from {src.public_url}", flush=True)
+    print(f"  fetching {label} from {src.public_url}", flush=True)
     r = requests.get(src.public_url, timeout=120)
     r.raise_for_status()
     dest.write_bytes(r.content)
@@ -241,7 +247,7 @@ def fetch(
     if verbose:
         print("Boulder County redacted Cast Vote Records:")
     downloaded: dict[str, dict[str, str]] = {}
-    for src in SOURCES:
+    for src in (*SOURCES, *ARCHIVED_ORIGINALS):
         fields = download_one(src, force=force)
         if fields:
             downloaded[src.filename] = fields

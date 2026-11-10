@@ -67,6 +67,10 @@ def test_cvr_number_list_marks_an_aggregate(tmp_path):
     assert split.unknown_labels == ()
     res = clean_countywide(raw, election_key="test")
     assert res.n_voters == 2
+    # The side table keeps the CVR-number list and counts its entries.
+    assert res.aggregates["_ID/CvrNumber"].tolist() == ["81883,81886", "69676, 69680, 69758"]
+    assert res.aggregates["_ID/n_ballots"].tolist() == [2, 3]
+    assert res.aggregates["_ID/aggregate_rule"].tolist() == ["cvr_list", "cvr_list"]
 
 
 def test_cvr_list_pattern_requires_two_numbers():
@@ -81,3 +85,5 @@ def test_reconcile_reads_csv_independently(tmp_path):
     assert counts["n_raw"] == 4
     assert counts["n_aggregate"] == 2
     assert counts["n_kept"] == 2
+    assert counts["n_aggregate_with_count"] == 2
+    assert counts["n_aggregate_ballots"] == 5

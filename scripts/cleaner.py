@@ -94,6 +94,19 @@ class CleanResult:
 
     cleaned: pd.DataFrame = field(default_factory=pd.DataFrame)
 
+    aggregates: pd.DataFrame = field(default_factory=pd.DataFrame)
+    """The aggregate side table (:func:`aggregate_side_table`), flattened."""
+
+    n_aggregate_rows_with_count: int = 0
+    """Aggregate rows whose label gives the number of ballots summed."""
+
+    n_aggregate_ballots_labelled: int = 0
+    """Sum of those labelled ballot counts (a lower bound on the ballots in
+    aggregates when some labels give no count)."""
+
+    n_aggregate_marks: int = 0
+    """Total marks (all contest-choice columns) inside the aggregate rows."""
+
 
 @dataclass
 class MergeStats:
@@ -198,6 +211,13 @@ class RedactionSplit:
     """Non-numeric ``CvrNumber`` labels not in
     :data:`scripts.loader.REDACTED_VALUES` (a new convention to document)."""
 
+    aggregates: pd.DataFrame = field(default_factory=pd.DataFrame)
+    """The aggregate rows themselves (source order), for the side table."""
+
+    aggregate_rule: tuple[str, ...] = ()
+    """Per aggregate row, why it was classified: ``"label"``, ``"cvr_list"``
+    or ``"values"`` (the first rule that matched, in that order)."""
+
 
 def split_redacted(raw_df: pd.DataFrame) -> RedactionSplit:
     """Classify every row as an ordinary ballot sheet, a single redacted
@@ -252,12 +272,90 @@ def split_redacted(raw_df: pd.DataFrame) -> RedactionSplit:
             and not AGGREGATE_CVR_LIST_RE.fullmatch(str(v))
         }
     )
+    is_label = labels.str.contains(AGGREGATE_LABEL_RE, na=False).to_numpy(dtype=bool)
+    is_list = labels.str.fullmatch(AGGREGATE_CVR_LIST_RE, na=False).to_numpy(dtype=bool)
+    rule = np.where(is_label, "label", np.where(is_list, "cvr_list", "values"))
+    agg_mask = is_aggregate.to_numpy(dtype=bool)
     return RedactionSplit(
         ballots=raw_df[~is_redacted].copy(),
         redacted=raw_df[is_single].copy(),
         n_aggregate_dropped=int(is_aggregate.sum()),
         unknown_labels=tuple(unknown),
+        aggregates=raw_df[is_aggregate].copy(),
+        aggregate_rule=tuple(str(r) for r in rule[agg_mask]),
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 1b: the aggregate side table
+# ---------------------------------------------------------------------------
+
+_BALLOT_COUNT_RE = re.compile(r"(\d+)\s+ballots?\b", re.IGNORECASE)
+
+
+def aggregate_ballot_count(label: object) -> int | None:
+    """Number of ballots an aggregate row sums, when its label says so.
+
+    * a comma-separated list of CVR numbers (2017 Coordinated, 2018 Primary):
+      the number of entries;
+    * ``"Redacted and Consolidated N Ballots"`` (2025 Coordinated, 2026
+      Primary): ``N``;
+    * anything else (``"Redacted & Aggregated"``, ``NaN``, ``"DS-01"``):
+      ``None``, because the row does not say.
+    """
+    if label is None or label is pd.NA or (isinstance(label, float) and np.isnan(label)):
+        return None
+    text = str(label)
+    if AGGREGATE_CVR_LIST_RE.fullmatch(text):
+        return len([p for p in text.split(",") if p.strip()])
+    m = _BALLOT_COUNT_RE.search(text)
+    return int(m.group(1)) if m else None
+
+
+def aggregate_side_table(
+    split: RedactionSplit, voter_columns: list[tuple], *, election_key: str = ""
+) -> pd.DataFrame:
+    """Build the published side table of aggregate rows (#33).
+
+    One row per aggregate, in source order, with the same contest columns as
+    the per-voter CSV (``voter_columns``, so the two concatenate cleanly),
+    plus any contest column that is blank in every kept row but marked in an
+    aggregate. Marks are counts (nullable ``Int64``), not 0/1.
+
+    ID columns: the source's own ID columns (``CvrNumber`` holds the label as
+    published), then ``aggregate_id`` (``aggregate-NNN`` in source order),
+    ``n_ballots`` (from the label; blank when the label gives no count),
+    ``aggregate_rule`` (``label``/``cvr_list``/``values``) and the flag
+    ``aggregate = True``. Columns are flattened like the per-voter CSV.
+    """
+    agg = split.aggregates
+    id_cols = [c for c in agg.columns if c[0] == "_ID"]
+    contest_in_voter = [c for c in voter_columns if c[0] != "_ID"]
+    extra = [
+        c
+        for c in contest_columns(agg)
+        if c not in set(contest_in_voter) and len(agg) and _col(agg, c).notna().any()
+    ]
+    out = agg.loc[:, id_cols].copy()
+    for c in id_cols:
+        out[c] = _col(agg, c).astype("string")
+    n = len(agg)
+    out[("_ID", "aggregate_id")] = pd.array(
+        [f"aggregate-{i:03d}" for i in range(1, n + 1)], dtype="string"
+    )
+    counts = [aggregate_ballot_count(v) for v in _col(agg, ("_ID", "CvrNumber"))]
+    out[("_ID", "n_ballots")] = pd.array(counts, dtype="Int64")
+    out[("_ID", "aggregate_rule")] = pd.array(list(split.aggregate_rule), dtype="string")
+    out[("_ID", "aggregate")] = np.ones(n, dtype=bool)
+    for c in contest_in_voter + extra:
+        vals = _col(agg, c) if c in agg.columns else pd.Series(np.nan, index=agg.index)
+        num = pd.to_numeric(vals, errors="raise").astype("float64")
+        if (num.dropna() % 1 != 0).any():
+            raise ValueError(f"{election_key}: non-integer aggregate count in {c}")
+        out[c] = num.astype("Int64")
+    out = out.reset_index(drop=True)
+    out.columns = flatten_columns(out)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -322,7 +420,7 @@ def _infer_sheet_map(
     Fingerprints held by fewer than ``min_fingerprint_share`` of a style's
     sheets get no sheet number: each such sheet becomes its own one-sheet
     voter. Styles with 3+ frequent fingerprints are merged as 3+-sheet voters
-    (Dominion supports multi-card ballots); none of the 2019–2025 files has
+    (Dominion supports multi-card ballots); none of the 2017–2026 files has
     one, and the cleaner warns if one appears.
     """
     bt_col = ("_ID", "BallotType")
@@ -694,8 +792,9 @@ def clean_countywide(
 
     1. Normalize ``BallotType`` to strings (numeric codes zero-padded).
     2. Coerce contest cells to numbers, failing on non-blank text.
-    3. :func:`split_redacted`: drop multi-ballot aggregates; keep
-       single-ballot redacted rows with ``_ID/redacted = True``.
+    3. :func:`split_redacted`: move multi-ballot aggregates to the side
+       table (:func:`aggregate_side_table`); keep single-ballot redacted
+       rows with ``_ID/redacted = True``.
     4. :func:`combine_multisheet` on the ordinary sheets.
     5. Append the redacted rows as one-sheet voters.
     6. Drop all-blank contest columns, cast contest cells to nullable
@@ -760,6 +859,12 @@ def clean_countywide(
         combined[c] = combined[c].astype("Int8")
     combined[("_ID", "n_sheets")] = combined[("_ID", "n_sheets")].astype("int64")
 
+    # Aggregate rows are not voters, but they hold real votes as counts:
+    # publish them in a side table with the same contest columns (#33).
+    aggregates = aggregate_side_table(split, list(combined.columns), election_key=election_key)
+    agg_counts = aggregates["_ID/n_ballots"]
+    agg_contests = [c for c in aggregates.columns if not c.startswith("_ID/")]
+
     # 5. Integrity checks.
     if len(combined) > 0:
         for required in (
@@ -799,6 +904,10 @@ def clean_countywide(
         multi_sheet_ballot_types=stats.multi_sheet_ballot_types,
         warnings=tuple(warnings),
         cleaned=combined,
+        aggregates=aggregates,
+        n_aggregate_rows_with_count=int(agg_counts.notna().sum()),
+        n_aggregate_ballots_labelled=int(agg_counts.sum()),
+        n_aggregate_marks=int(aggregates[agg_contests].sum().sum()) if len(aggregates) else 0,
     )
 
 
