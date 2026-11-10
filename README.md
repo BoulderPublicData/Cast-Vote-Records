@@ -1,6 +1,6 @@
-# Boulder County Cast Vote Records, 2017–2025
+# Boulder County Cast Vote Records, 2017–2026
 
-A liberated, documented, reproducible archive of ballot-level Cast Vote Records (CVRs) from Boulder County, Colorado. It covers **every general and coordinated election from the 2017 Coordinated through the 2025 Coordinated, plus the 2018 and 2024 June Primaries**. The 2020 and 2022 primaries and the 2024 Presidential Primary are not included. The wide-format CSVs in `data/processed/cast-vote-records/` (one per election, named by the same lowercase `{year}-{type}` key as [Election-Results](https://github.com/BoulderPublicData/Election-Results), e.g. `2024-general`) are ready for pandas, R, or any tool that reads CSVs. The source files in `data/original/` (XLSX, and CSV for 2017 and 2018) are the unmodified originals, released by the Boulder County Clerk and Recorder or obtained through Colorado Open Records Act (CORA) requests.
+A liberated, documented, reproducible archive of ballot-level Cast Vote Records (CVRs) from Boulder County, Colorado. It covers **every general and coordinated election from the 2017 Coordinated through the 2025 Coordinated, plus the 2018, 2024 and 2026 June Primaries and the 2024 Presidential Primary**. The 2020 and 2022 primaries are not included. The wide-format CSVs in `data/processed/cast-vote-records/` (one per election, named by the same lowercase `{year}-{type}` key as [Election-Results](https://github.com/BoulderPublicData/Election-Results), e.g. `2024-general` or `2024-presidential-primary`) are ready for pandas, R, or any tool that reads CSVs. The source files in `data/original/` (XLSX, and CSV for 2017 and 2018) are the unmodified originals, released by the Boulder County Clerk and Recorder or obtained through Colorado Open Records Act (CORA) requests.
 
 Architecture, design decisions, and contribution guidelines live in [`AGENTS.md`](AGENTS.md).
 
@@ -12,32 +12,34 @@ A **Statement of Votes** (SoV) is the official results report: vote totals per c
 
 ## What's in here
 
-Eleven processed per-voter CSVs, one per election, built from twelve original files (the twelfth is a CORA copy of the 2023 file; see below). **Each row is one voter**: when a ballot had two sheets, both rows of the original are merged into one.
+Thirteen processed per-voter CSVs, one per election, built from thirteen of the fifteen original files (the other two, a CORA copy of the 2023 file and the 2024 General post-recount CVR, are archived but not processed; see below). **Each row is one voter**: when a ballot had two sheets, both rows of the original are merged into one. Beside each per-voter CSV, an **aggregate side table** (`<election>-aggregate-rows.csv`; every election except the 2024 Presidential Primary, which has none) holds the rows in which the County summed several ballots for privacy; per-voter plus aggregate marks give the official totals.
 
-| Per-voter CSV | Source | Rows in original | Aggregate rows dropped | Ballot sheets kept | Voters | Redacted ballots kept | Sheets per ballot |
+| Per-voter CSV | Source | Rows in original | Aggregate rows (side table) | Ballot sheets kept | Voters | Redacted ballots kept | Sheets per ballot |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| [2017 Coordinated per-voter CSV](data/processed/cast-vote-records/2017-coordinated-county-wide-by-voter.csv) | CORA (CSV) | 94,503 | 23 | 94,480 | 94,480 | 0 | one |
-| [2018 Primary per-voter CSV](data/processed/cast-vote-records/2018-primary-county-wide-by-voter.csv) | CORA (CSV) | 85,004 | 27 | 84,977 | 84,977 | 0 | one; no City of Boulder contests |
-| [2018 General per-voter CSV](data/processed/cast-vote-records/2018-general-county-wide-by-voter.csv) | CORA | 349,870 | 75 | 349,795 | **176,545** | 0 | **two** for nearly every style |
-| [2019 Coordinated per-voter CSV](data/processed/cast-vote-records/2019-coordinated-county-wide-by-voter.csv) | CORA | 115,068 | 12 | 115,056 | 115,056 | 0 | one |
-| [2020 General per-voter CSV](data/processed/cast-vote-records/2020-general-county-wide-by-voter.csv) | CORA | 205,845 | 49 | 205,796 | 205,796 | 0 | one |
-| [2021 Coordinated per-voter CSV](data/processed/cast-vote-records/2021-coordinated-county-wide-by-voter.csv) | CORA | 108,381 | 18 | 108,363 | 108,363 | 0 | one |
-| [2022 General per-voter CSV](data/processed/cast-vote-records/2022-general-county-wide-by-voter.csv) | CORA | 320,580 | 37 | 320,543 | **162,714** | 1 | **two** for nearly every style |
-| [2023 Coordinated per-voter CSV](data/processed/cast-vote-records/2023-coordinated-county-wide-by-voter.csv) | [2023 County download](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx) | 118,787 | 18 | 118,769 | 118,769 | 100 | one |
-| [2024 Primary per-voter CSV](data/processed/cast-vote-records/2024-primary-county-wide-by-voter.csv) | [2024 Primary County download](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx) | 65,790 | 3 | 65,787 | 65,787 | 1,012 | one; no City of Boulder contests |
-| [2024 General per-voter CSV](data/processed/cast-vote-records/2024-general-county-wide-by-voter.csv) | [2024 General County download](https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx) | 384,444 | 60 | 384,384 | **193,005** | 0 | **two** for every style |
-| [2025 Coordinated per-voter CSV](data/processed/cast-vote-records/2025-coordinated-county-wide-by-voter.csv) | [2025 County download](https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx) | 121,540 | 3 | 121,537 | 121,537 | 1,008 | one |
+| [2017 Coordinated per-voter CSV](data/processed/cast-vote-records/2017-coordinated-county-wide-by-voter.csv) | CORA (CSV) | 94,503 | [23](data/processed/cast-vote-records/2017-coordinated-aggregate-rows.csv) | 94,480 | 94,480 | 0 | one |
+| [2018 Primary per-voter CSV](data/processed/cast-vote-records/2018-primary-county-wide-by-voter.csv) | CORA (CSV) | 85,004 | [27](data/processed/cast-vote-records/2018-primary-aggregate-rows.csv) | 84,977 | 84,977 | 0 | one; no City of Boulder contests |
+| [2018 General per-voter CSV](data/processed/cast-vote-records/2018-general-county-wide-by-voter.csv) | CORA | 349,870 | [75](data/processed/cast-vote-records/2018-general-aggregate-rows.csv) | 349,795 | **176,545** | 0 | **two** for nearly every style |
+| [2019 Coordinated per-voter CSV](data/processed/cast-vote-records/2019-coordinated-county-wide-by-voter.csv) | CORA | 115,068 | [12](data/processed/cast-vote-records/2019-coordinated-aggregate-rows.csv) | 115,056 | 115,056 | 0 | one |
+| [2020 General per-voter CSV](data/processed/cast-vote-records/2020-general-county-wide-by-voter.csv) | CORA | 205,845 | [49](data/processed/cast-vote-records/2020-general-aggregate-rows.csv) | 205,796 | 205,796 | 0 | one |
+| [2021 Coordinated per-voter CSV](data/processed/cast-vote-records/2021-coordinated-county-wide-by-voter.csv) | CORA | 108,381 | [18](data/processed/cast-vote-records/2021-coordinated-aggregate-rows.csv) | 108,363 | 108,363 | 0 | one |
+| [2022 General per-voter CSV](data/processed/cast-vote-records/2022-general-county-wide-by-voter.csv) | CORA | 320,580 | [37](data/processed/cast-vote-records/2022-general-aggregate-rows.csv) | 320,543 | **162,714** | 1 | **two** for nearly every style |
+| [2023 Coordinated per-voter CSV](data/processed/cast-vote-records/2023-coordinated-county-wide-by-voter.csv) | [2023 County download](https://assets.bouldercounty.gov/wp-content/uploads/2023/11/Redacted-2023Coordinated-CVR.xlsx) | 118,787 | [18](data/processed/cast-vote-records/2023-coordinated-aggregate-rows.csv) | 118,769 | 118,769 | 100 | one |
+| [2024 Presidential Primary per-voter CSV](data/processed/cast-vote-records/2024-presidential-primary-county-wide-by-voter.csv) | [2024 Presidential Primary County download](https://assets.bouldercounty.gov/wp-content/uploads/2024/03/CVR-2024PPE-Final.xlsx) | 94,038 | 0 | 94,038 | 94,038 | 38 | one; no City of Boulder contests |
+| [2024 Primary per-voter CSV](data/processed/cast-vote-records/2024-primary-county-wide-by-voter.csv) | [2024 Primary County download](https://assets.bouldercounty.gov/wp-content/uploads/2024/07/2024-Boulder-County-June-Primary-Election-CVR.xlsx) | 65,790 | [3](data/processed/cast-vote-records/2024-primary-aggregate-rows.csv) | 65,787 | 65,787 | 1,012 | one; no City of Boulder contests |
+| [2024 General per-voter CSV](data/processed/cast-vote-records/2024-general-county-wide-by-voter.csv) | [2024 General County download](https://assets.bouldercounty.gov/wp-content/uploads/2025/01/2024-Boulder-County-General-Redacted-Cast-Vote-Record.xlsx) | 384,444 | [60](data/processed/cast-vote-records/2024-general-aggregate-rows.csv) | 384,384 | **193,005** | 0 | **two** for every style |
+| [2025 Coordinated per-voter CSV](data/processed/cast-vote-records/2025-coordinated-county-wide-by-voter.csv) | [2025 County download](https://assets.bouldercounty.gov/wp-content/uploads/2025/12/Redacted-CVR-PUBLIC.xlsx) | 121,540 | [3](data/processed/cast-vote-records/2025-coordinated-aggregate-rows.csv) | 121,537 | 121,537 | 1,008 | one |
+| [2026 Primary per-voter CSV](data/processed/cast-vote-records/2026-primary-county-wide-by-voter.csv) | [2026 Primary County download](https://assets.bouldercounty.gov/wp-content/uploads/2026/07/2026P-Redacted-CVR-Public.xlsx) | 100,360 | [5](data/processed/cast-vote-records/2026-primary-aggregate-rows.csv) | 100,355 | 100,355 | 2,898 | one; no City of Boulder contests |
 
 How to read the columns:
 
 * **Rows in original**: rows in the County's file, below its header.
-* **Aggregate rows dropped**: rows that sum several ballots for privacy (see below).
-* **Ballot sheets kept**: the rows that remain after dropping aggregates.
+* **Aggregate rows (side table)**: rows that sum several ballots for privacy (see below). They are not voters, so they are left out of the per-voter CSV and published in the side table the number links to.
+* **Ballot sheets kept**: the rows that remain after setting aside aggregates.
 * **Voters**: sheets merged per voter.
 
-Every file covers the whole county; filter to a jurisdiction yourself (recipe below). The 2024 Primary is a partisan state primary with no City of Boulder municipal contests. Its countywide rows are all retained.
+Every file covers the whole county; filter to a jurisdiction yourself (recipe below). The 2018, 2024 and 2026 Primaries are partisan state primaries, and the 2024 Presidential Primary has only the two party presidential contests; none has City of Boulder municipal contests. Their countywide rows are all retained.
 
-Exact counts, including the sheet-count distribution and merge diagnostics, are in [`data/processed/cast-vote-records/_summary.csv`](data/processed/cast-vote-records/_summary.csv) and the latest [audit summary](data/audit/summary.md). `data/original/2023-CVR.xlsx` is the CORA copy of the 2023 file. It holds the same ballots in a different row order, so it is archived but not processed ([details](docs/methodology.md#sources)).
+Exact counts, including the sheet-count distribution and merge diagnostics, are in [`data/processed/cast-vote-records/_summary.csv`](data/processed/cast-vote-records/_summary.csv) and the latest [audit summary](data/audit/summary.md). `data/original/2023-CVR.xlsx` is the CORA copy of the 2023 file. It holds the same ballots in a different row order, so it is archived but not processed. `data/original/2024-General-Recount-CVR.xlsx` is the County's post-recount CVR for the 2024 General: only the 25,438 sheets in the December 2024 recounts (Erie Council District 1, Superior Trustee), so it is archived too, and `2024-general` stays the countywide pre-recount file ([details](docs/methodology.md#sources)).
 
 A sample of the 2023 Coordinated: four City of Boulder voters and one redacted ballot (most contest columns omitted):
 
@@ -60,9 +62,9 @@ Cell values: `1` = the scanner detected a mark in the bubble; `0` = the bubble w
 * `data/processed/clusters/city-of-boulder-cluster-smallmultiples.png`: the figure below.
 * `data/processed/clusters/provenance.csv`: for every derived file, the SHA-256 of the input CSV and of the output, the random seed, the parameters, and the package versions.
 
-The 2018 and 2024 Primaries have no City of Boulder contests, so they have no cluster files. Redacted ballots are left out of the clustering.
+The primaries (2018, 2024 Presidential, 2024 and 2026) have no City of Boulder contests, so they have no cluster files. Redacted ballots are left out of the clustering.
 
-![Nine scatter-plot panels in a three-by-three grid, one per Boulder County general or coordinated election from 2017 to 2025, each showing City of Boulder voters projected to two dimensions with UMAP. Points are colored by HDBSCAN cluster, with each cluster's id printed at its center and noise shown as hollow rings. The 2018 and 2024 Primaries are not shown because they had no City of Boulder contests.](data/processed/clusters/city-of-boulder-cluster-smallmultiples.png)
+![Nine scatter-plot panels in a three-by-three grid, one per Boulder County general or coordinated election from 2017 to 2025, each showing City of Boulder voters projected to two dimensions with UMAP. Points are colored by HDBSCAN cluster, with each cluster's id printed at its center and noise shown as hollow rings. The 2018, 2024 and 2026 Primaries and the 2024 Presidential Primary are not shown because they had no City of Boulder contests.](data/processed/clusters/city-of-boulder-cluster-smallmultiples.png)
 
 *Figure: City of Boulder voter clusters by election. Colors mark each election's eight largest clusters in size order (blue = largest); smaller clusters are black; hollow rings are noise. Numbers are cluster ids, matching the `cluster` column. Positions are only meaningful within a panel.*
 
@@ -70,8 +72,8 @@ The 2018 and 2024 Primaries have no City of Boulder contests, so they have no cl
 
 To protect ballot secrecy, the County alters some rows before publishing a CVR:
 
-* **Redacted single ballots.** For ballots in small ballot styles, the County blanks the identifiers that locate a ballot in the scanning sequence (`TabulatorNum`, `BatchId`, `RecordId`, `ImprintedId`). It writes `Redacted` or `RCV Redacted & Randomly Sorted` in `CvrNumber`, but leaves the marks. These rows are **kept** and flagged `_ID/redacted = True`: 2,121 across all elections. In 2023, the 100 redacted rows hold only the mayoral ranked-choice contest.
-* **Aggregate rows.** For the smallest groups, the County sums several ballots into one row. Such a row is not one voter, so it is **dropped**: 325 rows across all elections. Their marks are still in the official results. In 2017 and the 2018 Primary, `CvrNumber` on these rows lists the CVR numbers of the ballots summed into it (23 rows holding 249 ballots, and 27 holding 374).
+* **Redacted single ballots.** For ballots in small ballot styles, the County blanks the identifiers that locate a ballot in the scanning sequence (`TabulatorNum`, `BatchId`, `RecordId`, `ImprintedId`). It writes `Redacted` or `RCV Redacted & Randomly Sorted` in `CvrNumber`, but leaves the marks. These rows are **kept** and flagged `_ID/redacted = True`: 5,057 across all elections (2,898 of them in the 2026 Primary). In 2023, the 100 redacted rows hold only the mayoral ranked-choice contest.
+* **Aggregate rows.** For the smallest groups, the County sums several ballots into one row. Such a row is not one voter, so it is **left out of the per-voter CSV** and published in the election's **aggregate side table**, `<election>-aggregate-rows.csv`: 330 rows across all elections, with their marks as counts, their `CvrNumber` label, `_ID/n_ballots` when the label says how many ballots were summed, and `_ID/aggregate = True`. Their marks are in the official results, so analyses of vote totals should add them. In 2017 and the 2018 Primary, `CvrNumber` lists the CVR numbers of the ballots summed into the row (23 rows holding 249 ballots, and 27 holding 374); 2025 and 2026 labels say "Consolidated N Ballots" (2026: 5 rows holding 68 ballots); the other years give no count.
 
 This repository republishes only what the County released. It never re-creates a blanked identifier and never restores the scan order of redacted ballots. **Re-identification caveat:** a ballot style used by only a few voters is, by definition, a small group. Combining `_ID/BallotType`, `_ID/PrecinctPortion`, a voter's full pattern of choices, and outside knowledge could narrow a row to a handful of people, and `_ID/ImprintedId` (also `_ID/voter_id`) is the number printed on the paper ballot. **Do not use this data to try to identify voters.** Details are in [`docs/methodology.md` § Redaction](docs/methodology.md#redaction).
 
@@ -131,7 +133,11 @@ More recipes, including wide→long pivots, cross-election pools, and undervote-
 
 ## Accuracy checks
 
-`python -m scripts.reconcile` re-reads every original with an independent parser and checks the published files against it. It fails if any of these differ: row counts, aggregate counts, Σ `n_sheets`, unique `voter_id`, or the mark total of every contest-choice column. With `--sov` it also compares against the official Boulder County Statement of Votes, using the CSVs in [BoulderPublicData/Election-Results](https://github.com/BoulderPublicData/Election-Results). For 2017, 2018 General, 2019, 2020, 2021, 2022 and 2025, the marks in these CSVs plus the marks in the dropped aggregate rows equal the official totals exactly, for every matched contest. The 2018 Primary has no Statement of Votes in Election-Results yet, so it is checked only against its own original. The latest report is [`data/audit/reconcile.md`](data/audit/reconcile.md).
+`python -m scripts.reconcile` re-reads every original with an independent parser and checks the published files against it. It fails if any of these differ: row counts, aggregate counts, Σ `n_sheets`, unique `voter_id`, the mark total of every contest-choice column, or the aggregate side table's rows, ballot counts and column totals.
+
+With `--sov` it also checks against the official Boulder County Statement of Votes, using the CSVs in [BoulderPublicData/Election-Results](https://github.com/BoulderPublicData/Election-Results), and **fails on any difference**. For every contest-choice whose name matches (after dropping `(Vote For=N)`, normalizing hyphens and spaces, and ignoring case), the marks in the per-voter CSV plus the marks in the aggregate side table must equal the SoV votes summed over precincts. About half of each election's choices match by name; `Yes/For` vs `Yes`, write-ins and RCV rank columns are not compared. The per-voter rows alone come to about 96–99.98% of the SoV; with the aggregates, every matched choice in 2017, 2018 General, 2019, 2020, 2021, 2022 and 2025 is exact.
+
+The only allowed differences are listed, with the exact difference, a reason and evidence, in [`data/lookups/sov-exceptions.csv`](data/lookups/sov-exceptions.csv). Today they are recounts and one upstream double count: the 2024 General CVR is from before the December 2024 recounts, while the SoV for Erie Council District 1 and Superior Trustee is the County's amended post-recount count (four choices off by one); the 2023 City of Boulder council CVR is from before the 2023 recount (seven choices off by one or two, once Election-Results uses the recount SoV); and Election-Results counts one Louisville Ward 2 precinct group twice (two choices, until its fix merges). An exception that no longer applies is reported and does not fail the run. The primaries have no Statement of Votes in Election-Results yet, so they are checked only against their own originals. The latest report is [`data/audit/reconcile.md`](data/audit/reconcile.md).
 
 ## Provenance and refresh
 
@@ -167,9 +173,9 @@ Please cite the release or commit you used. Machine-readable citation metadata i
 ```bibtex
 @misc{keegan_boulder_cvr,
   author  = {Keegan, Brian C.},
-  title   = {Boulder County Cast Vote Records, 2017--2025},
+  title   = {Boulder County Cast Vote Records, 2017--2026},
   year    = {2026},
-  version = {0.4.0},
+  version = {0.5.0},
   url     = {https://github.com/BoulderPublicData/Cast-Vote-Records},
   note    = {Compiled from publicly posted and CORA-disclosed Dominion CVR exports by the Boulder County Clerk and Recorder. Cite the commit hash you used.}
 }

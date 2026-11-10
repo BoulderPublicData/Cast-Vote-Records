@@ -96,7 +96,7 @@
     "xlsx_modified": "2024-12-12T16:52:44Z"
   },
   "2024-General-Recount-CVR.xlsx": {
-    "first_committed_at": "",
+    "first_committed_at": "2026-11-10T13:52:33Z",
     "obtained_at": "",
     "retrieved_at": "2026-11-10T03:54:15Z",
     "sha256": "c34f4ab315c798443b490260f51432c934373ec3b45ae8f39a767ed4923cda60",
@@ -106,7 +106,7 @@
     "xlsx_modified": "2024-12-12T21:11:26Z"
   },
   "2024-Presidential-Primary-CVR.xlsx": {
-    "first_committed_at": "",
+    "first_committed_at": "2026-11-10T13:52:33Z",
     "obtained_at": "",
     "retrieved_at": "2026-11-10T03:54:12Z",
     "sha256": "f05fea1046f436ab436fcdb391d049402af15f02937cf10f70bc06f05ac1819c",
@@ -136,7 +136,7 @@
     "xlsx_modified": "2025-12-02T00:48:20Z"
   },
   "2026-Primary-CVR.xlsx": {
-    "first_committed_at": "",
+    "first_committed_at": "2026-11-10T13:52:33Z",
     "obtained_at": "",
     "retrieved_at": "2026-11-10T03:54:13Z",
     "sha256": "04cbb21f4a63df14cee6d0321548baabc5445a5e2a644e8e9fdf56d5d7bd4453",
