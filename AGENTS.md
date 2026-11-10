@@ -57,7 +57,14 @@ CVR_DATA_DIR=/tmp/cvr/data uv run jupyter nbconvert --to notebook --execute --in
 cp -r /tmp/cvr/data/. data/ && git add data && git commit
 ```
 
-`CVR_DATA_DIR` moves every path in `scripts/config.py`, and the notebook reads it too. Provenance still records `data/...` paths. Run `git lfs pull` first: a checkout made with LFS smudging off leaves pointer files, and the copy inherits them.
+`CVR_DATA_DIR` moves every path in `scripts/config.py`, and the notebook reads it too. Provenance still records `data/...` paths. `audit` also rewrites `docs/variables.{md,csv}` in the working tree (it documents the dataset, so it is not under `CVR_DATA_DIR`). Commit it together with the data you copy back, not on its own mid-run. Run `git lfs pull` first: a checkout made with LFS smudging off leaves pointer files, and the copy inherits them.
+
+## Working in a cloud session
+
+- **Delegated agents: push at milestones.** A brief for a subagent should say "commit and push after each milestone", so its work survives an interruption.
+- **Usage limits.** If a subagent stops on a usage limit, the notification gives the reset time. Schedule a check-in at that time (`send_later`), and resume the agent with `SendMessage` then, instead of waiting for someone to notice. Two agents sat idle for 7 h and 9 h before this was written down.
+- **Stopping background jobs.** Stop a background task with the task-stop tool and its task ID. If you must match by name, bracket the first letter (`pkill -f "[s]cripts.pipeline"`) so the pattern doesn't match its own shell.
+- **After a PR merges.** GitHub deletes the branch. Reset the session branch and drop the stale tracking ref: `git fetch origin main && git checkout -B claude/<branch> origin/main && git remote prune origin`. Otherwise the stop hook reports commits that are already on `main`.
 
 ## Layout
 
