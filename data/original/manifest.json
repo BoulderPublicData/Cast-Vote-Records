@@ -95,6 +95,26 @@
     "xlsx_created": "2024-12-12T15:03:08Z",
     "xlsx_modified": "2024-12-12T16:52:44Z"
   },
+  "2024-General-Recount-CVR.xlsx": {
+    "first_committed_at": "",
+    "obtained_at": "",
+    "retrieved_at": "2026-11-10T03:54:15Z",
+    "sha256": "c34f4ab315c798443b490260f51432c934373ec3b45ae8f39a767ed4923cda60",
+    "size": 9156211,
+    "source_last_modified": "2025-01-07T02:18:43Z",
+    "xlsx_created": "2024-12-12T21:08:55Z",
+    "xlsx_modified": "2024-12-12T21:11:26Z"
+  },
+  "2024-Presidential-Primary-CVR.xlsx": {
+    "first_committed_at": "",
+    "obtained_at": "",
+    "retrieved_at": "2026-11-10T03:54:12Z",
+    "sha256": "f05fea1046f436ab436fcdb391d049402af15f02937cf10f70bc06f05ac1819c",
+    "size": 8552404,
+    "source_last_modified": "2024-03-22T17:38:00Z",
+    "xlsx_created": "2024-03-21T13:56:52Z",
+    "xlsx_modified": "2024-03-21T22:34:08Z"
+  },
   "2024-Primary-CVR.xlsx": {
     "first_committed_at": "2026-05-23T19:03:50Z",
     "obtained_at": "",
@@ -114,5 +134,15 @@
     "source_last_modified": "2025-12-02T00:54:26Z",
     "xlsx_created": "2025-11-19T00:01:27Z",
     "xlsx_modified": "2025-12-02T00:48:20Z"
+  },
+  "2026-Primary-CVR.xlsx": {
+    "first_committed_at": "",
+    "obtained_at": "",
+    "retrieved_at": "2026-11-10T03:54:13Z",
+    "sha256": "04cbb21f4a63df14cee6d0321548baabc5445a5e2a644e8e9fdf56d5d7bd4453",
+    "size": 14532823,
+    "source_last_modified": "2026-07-23T23:25:57Z",
+    "xlsx_created": "2026-07-16T15:02:33Z",
+    "xlsx_modified": "2026-07-23T22:40:30Z"
   }
 }
